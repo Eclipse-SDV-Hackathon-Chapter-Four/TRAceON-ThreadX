@@ -28,6 +28,10 @@
 
 void mqtt_thread_entry(ULONG thread_input);
 
+/* Publish a pre-formatted log JSON payload to the MQTT log topic.
+ * Returns NXD_MQTT_SUCCESS on success. Safe no-op if the client isn't connected. */
+UINT mqtt_publish_log(const char* json, UINT length);
+
 /* Define the symbol for signaling a received message. */
 
 /* Define the priority of the MQTT internal thread. */

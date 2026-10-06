@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.traceon</groupId>
+    <artifactId>telemetry-java-spike</artifactId>
+    <version>0.1.0</version>
+    <packaging>jar</packaging>
+
+    <!--
+      Full Jakarta / Eclipse telemetry server.
+      Jakarta EE 10 namespace (jakarta.*) throughout:
+        - Eclipse Jetty   (Jakarta Servlet)                 jetty-ee10-servlet
+        - Eclipse Jersey  (Jakarta RESTful Web Services)    JAX-RS 3.1
+        - Eclipse Yasson  (Jakarta JSON Binding / JSON-B)   JSON-B 3.0
+        - Eclipse Paho    (MQTT client, Java)
+      Broker: Eclipse Mosquitto. => whole path is Eclipse; three Jakarta specs.
+    -->
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jetty.version>12.0.16</jetty.version>
+        <jersey.version>3.1.9</jersey.version>
+        <yasson.version>3.0.4</yasson.version>
+        <paho.version>1.2.5</paho.version>
+    </properties>
+
+    <dependencies>
+        <!-- Eclipse Jetty: embedded servlet server (Jakarta Servlet, EE10) -->
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlet</artifactId>
+            <version>${jetty.version}</version>
+        </dependency>
+
+        <!-- Eclipse Jersey: JAX-RS (Jakarta RESTful Web Services) on a servlet container -->
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-servlet-core</artifactId>
+            <version>${jersey.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.inject</groupId>
+            <artifactId>jersey-hk2</artifactId>
+            <version>${jersey.version}</version>
+        </dependency>
+        <!-- Jersey <-> JSON-B integration (uses Yasson under the hood) -->
+        <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-json-binding</artifactId>
+            <version>${jersey.version}</version>
+        </dependency>
+
+        <!-- Eclipse Yasson: Jakarta JSON Binding (JSON-B 3.0) reference implementation -->
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>yasson</artifactId>
+            <version>${yasson.version}</version>
+        </dependency>
+
+        <!-- Eclipse Paho: Java MQTT client -->
+        <dependency>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+            <version>${paho.version}</version>
+        </dependency>
+
+        <!-- Simple SLF4J backend so Jetty/Jersey/Paho logs are visible (no NOP warnings). -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.16</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>telemetry-java-spike</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>org.traceon.TelemetrySpike</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

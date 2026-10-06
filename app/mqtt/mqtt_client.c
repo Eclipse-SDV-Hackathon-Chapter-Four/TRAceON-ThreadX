@@ -13,6 +13,7 @@
 #include "cloud_config.h"
 #include "mqtt_client.h"
 #include "nx_api.h"
+#include "screen.h"
 #include "telemetry.h"
 #include "wwd_networking.h"
 
@@ -39,6 +40,19 @@ static VOID client_disconnect_func(NXD_MQTT_CLIENT *client_ptr)
 {
     NX_PARAMETER_NOT_USED(client_ptr);
     printf("client disconnected from broker.\r\n");
+}
+
+/* Publish a pre-formatted log JSON payload to MQTT_LOG_TOPIC (QoS1). */
+UINT mqtt_publish_log(const char* json, UINT length)
+{
+    UINT status = nxd_mqtt_client_publish(&mqtt_client,
+                                          MQTT_LOG_TOPIC, STRLEN(MQTT_LOG_TOPIC),
+                                          (CHAR*)json, length, 0, QOS1, NX_WAIT_FOREVER);
+    if (status != NXD_MQTT_SUCCESS)
+    {
+        printf("Log publish failed with code: %d\r\n", status);
+    }
+    return status;
 }
 
 static void send_message(){
@@ -74,6 +88,9 @@ static void receive_message(){
         message_sent = message_buffer[0];
         status = tx_queue_send(&mqtt_queue, &message_sent, TX_WAIT_FOREVER);
         printf("Topic: %s, Message: %s\r\n", topic_buffer, message_buffer);
+
+        /* Show the incoming message on the OLED (header + wrapped payload). */
+        screen_print_wrapped("Message:", (const char*)message_buffer, message_length);
     }
 }
 

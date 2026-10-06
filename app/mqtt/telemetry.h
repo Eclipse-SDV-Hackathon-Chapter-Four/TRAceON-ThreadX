@@ -20,7 +20,7 @@
 #define _TELEMETRY_H
 
 // Log telemetry if needed
-//#define LOG_TELEMETRY
+#define LOG_TELEMETRY
 
 // Sensor data
 typedef struct{

@@ -28,4 +28,9 @@ typedef enum
 void screen_print(char* str, LINE_NUM line);
 void screen_printn(const char* str, unsigned int str_length, LINE_NUM line);
 
+/* Clears the screen, prints `header` on line L0, then word-wraps `str`
+ * (length `str_length`) across the remaining lines L1..L3. Non-printable
+ * characters are rendered as spaces. */
+void screen_print_wrapped(const char* header, const char* str, unsigned int str_length);
+
 #endif // _SCREEN_H

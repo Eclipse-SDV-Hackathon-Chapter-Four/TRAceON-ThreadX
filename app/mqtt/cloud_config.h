@@ -30,18 +30,19 @@ typedef enum
 // WiFi connection config
 // ----------------------------------------------------------------------------
 #define HOSTNAME      "eclipse-threadx"  //Change to unique hostname.
-#define WIFI_SSID     ""
-#define WIFI_PASSWORD "" 
+#define WIFI_SSID     "Hackathon-Team-11"
+#define WIFI_PASSWORD "SDVTeam-123456"
 #define WIFI_MODE     WPA2_PSK_AES
 
 // ----------------------------------------------------------------------------
 // MQTT Config
 // ----------------------------------------------------------------------------
-#define MQTT_CLIENT_NAME     "ThreadXAZ3166" //Change to unique name.
-// Use test.mosquitto.org in a pinch.
-#define MQTT_LOCAL_BROKER_IP (IP_ADDRESS(5, 196, 78, 28))
+#define MQTT_CLIENT_NAME     "TRAceON" //Change to unique name.
+// Local mosquitto broker on the Mac (en0 LAN IP). Was test.mosquitto.org (5,196,78,28).
+#define MQTT_LOCAL_BROKER_IP (IP_ADDRESS(192, 168, 88, 254))
 #define MQTT_SUBSCRIBE_TOPIC MQTT_CLIENT_NAME "/incoming" 
-#define MQTT_PUBLISH_TOPIC   MQTT_CLIENT_NAME "/telemetry" 
+#define MQTT_PUBLISH_TOPIC   MQTT_CLIENT_NAME "/sensor-data" 
+#define MQTT_LOG_TOPIC       MQTT_CLIENT_NAME "/logs"
 
 // ----------------------------------------------------------------------------
 // MQTT Support infrastructure

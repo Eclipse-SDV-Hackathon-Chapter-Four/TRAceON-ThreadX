@@ -1,5 +1,5 @@
 param(
-    [string]$Config = "starter",
+    [string]$Config = "mqtt",
     [switch]$Clean,
     [switch]$Rebuild
 )

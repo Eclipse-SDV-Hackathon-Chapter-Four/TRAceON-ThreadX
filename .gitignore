@@ -17,3 +17,7 @@ target/
 
 # Logs
 *.log
+
+# Emacs lock/temp files
+.#*
+*~

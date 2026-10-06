@@ -1,0 +1,6 @@
+# TRAceON telemetry HTTP server dependencies.
+# Flexible minimums; known to work on Python 3.14.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+paho-mqtt>=2.1
+pydantic>=2.7

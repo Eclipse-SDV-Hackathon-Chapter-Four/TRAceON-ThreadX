@@ -12,6 +12,7 @@
  */
 
 #include "cloud_config.h"
+#include "logger.h"
 #include "nanoprintf.h" 
 #include "sensor.h"
 #include "telemetry.h"
@@ -114,6 +115,15 @@ void telemetry_thread_entry(ULONG parameter)
         new_sensor_data.pressure_hPa = lps22hb_data.pressure_hPa;
         hts221_data_t hts221_data = hts221_data_read();
         new_sensor_data.humidity_perc = hts221_data.humidity_perc;
+
+        // Example plausibility checks -> structured log warnings (TRAceON/logs).
+        if (new_sensor_data.humidity_perc <= 0.0f || new_sensor_data.humidity_perc > 100.0f) {
+            traceon_log_warn("SensorTask", "Humidity reading out of range (0-100%)");
+        }
+        if (new_sensor_data.temperature_degC < -40.0f ||
+            new_sensor_data.temperature_degC > 85.0f) {
+            traceon_log_warn("SensorTask", "Temperature improbable for operating range");
+        }
         lsm6dsl_data_t lsm6dsl_data = lsm6dsl_data_read();
         memcpy(new_sensor_data.acceleration_mg, 
                lsm6dsl_data.acceleration_mg,
@@ -123,19 +133,22 @@ void telemetry_thread_entry(ULONG parameter)
                lis2mdl_data.magnetic_mG,
                sizeof(lis2mdl_data.magnetic_mG));
 
-        if (data_changed(&current_sensor_data, &new_sensor_data)){
-            #ifdef LOG_TELEMETRY
+        // Publish on EVERY cycle so consumers get regular readings (every
+        // telemetry_interval seconds), not only when values change.
+        #ifdef LOG_TELEMETRY
+            if (data_changed(&current_sensor_data, &new_sensor_data)) {
                 printf("Telemetry changed.\r\n");
                 print_sensor_data(new_sensor_data);
-            #endif
-            tx_event_flags_set(&mqtt_app_flag, MQTT_MESSAGE_READY, TX_OR);
-            current_sensor_data = new_sensor_data;
-        }
-        #ifdef LOG_TELEMETRY
-        else{
-            printf("Telemetry did not change.\r\n");
-        }
+            } else {
+                printf("Telemetry did not change.\r\n");
+            }
         #endif
+        tx_event_flags_set(&mqtt_app_flag, MQTT_MESSAGE_READY, TX_OR);
+        current_sensor_data = new_sensor_data;
+
+        // TEMPORARY (test): emit a heartbeat log every cycle so the board's
+        // log path (TRAceON/logs) is exercised on real hardware. Remove later.
+        traceon_log_info("Main", "heartbeat");
 
         tx_thread_sleep(TX_TIMER_TICKS_PER_SECOND * telemetry_interval);
     }
