@@ -1,0 +1,19 @@
+# Build output (CMake/firmware)
+build/
+build-*/
+
+# Python virtualenv + caches
+.venv/
+__pycache__/
+*.pyc
+
+# Java/Maven build output
+target/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
+
+# Logs
+*.log
