@@ -146,9 +146,9 @@ curl -s "localhost:8083/logs/history?since=2026-10-06T17:00:00Z"
 curl -s localhost:8083/logs/forwarding
 curl -s -X POST localhost:8083/logs/forwarding/start
 curl -s -X POST localhost:8083/logs/forwarding/stop
-# override URL at start:
+# override URL at start (point at your sink; sink port is 8080 by convention):
 curl -s -X POST localhost:8083/logs/forwarding/start \
-     -H 'content-type: application/json' -d '{"url":"http://collector:9000/logs"}'
+     -H 'content-type: application/json' -d '{"url":"http://SINK_HOST:8080/logs"}'
 
 # Command to the board
 curl -s -X POST localhost:8083/command \
