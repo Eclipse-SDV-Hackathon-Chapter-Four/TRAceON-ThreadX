@@ -9,7 +9,7 @@ public final class Config {
     }
 
     public static final String COMPONENT = env("TRACEON_COMPONENT", "TRAceON");
-    public static final int HTTP_PORT = Integer.parseInt(env("TRACEON_HTTP_PORT", "8081"));
+    public static final int HTTP_PORT = Integer.parseInt(env("TRACEON_HTTP_PORT", "8082"));
     public static final int LOG_BUFFER_SIZE =
             Integer.parseInt(env("TRACEON_LOG_BUFFER_SIZE", "100"));
     public static final int TELEMETRY_HISTORY_SIZE =

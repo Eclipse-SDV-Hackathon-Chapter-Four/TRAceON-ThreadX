@@ -15,6 +15,8 @@ from .parser import parse_payload
 from .store import store
 from .logs import log_store, parse_log
 from .broadcaster import broadcaster
+from .envelope import event_envelope
+from .forwarder import forwarder
 
 logger = logging.getLogger("traceon.mqtt")
 
@@ -78,7 +80,10 @@ class MqttClient:
 
         if msg.topic == settings.log_topic:
             entry = log_store.add(parse_log(text))
-            broadcaster.publish("logs", entry)
+            # SSE stream delivers each log wrapped in an ISO EventEnvelope.
+            broadcaster.publish("logs", event_envelope(entry))
+            # Separate, optional sink: forward the raw LogEntry via POST (if started).
+            forwarder.submit(entry)
             logger.debug("Log entry: %s", entry)
         else:  # sensor/telemetry topic
             fields = parse_payload(text)

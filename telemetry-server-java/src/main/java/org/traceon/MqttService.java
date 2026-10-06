@@ -51,8 +51,11 @@ public final class MqttService {
 
         // Log topic -> ring buffer + SSE "logs" channel (SEPARATE from telemetry).
         client.subscribe(logTopic, 1, (IMqttMessageListener) (topic, msg) -> {
-            LogStore.LogEntry entry = LogStore.INSTANCE.add(new String(msg.getPayload()));
-            SseRegistry.INSTANCE.publish("logs", Json.toJson(entry));
+            java.util.Map<String, Object> entry = LogStore.INSTANCE.add(new String(msg.getPayload()));
+            // SSE delivers each log wrapped in an ISO EventEnvelope.
+            SseRegistry.INSTANCE.publish("logs", Json.toJson(EventEnvelope.wrap(entry)));
+            // Separate optional sink: forward the raw LogEntry via POST (if started).
+            LogForwarder.INSTANCE.submit(entry);
         });
 
         System.out.println("Subscribed to " + sensorTopic + " and " + logTopic + " at " + uri);

@@ -31,6 +31,7 @@ from .mqtt_client import mqtt_client
 from .store import store
 from .logs import log_store
 from .broadcaster import broadcaster
+from .forwarder import forwarder
 from . import query
 
 logging.basicConfig(level=logging.INFO)
@@ -194,22 +195,56 @@ def logs_history(
 
     sev_set = None
     if severity:
-        sev_set = {s.strip().upper() for s in severity.split(",") if s.strip()}
+        # Normalize each requested severity to DLT_* so WARN or DLT_WARN both work.
+        from .logs import _normalize_severity
+        sev_set = {_normalize_severity(s) for s in severity.split(",") if s.strip()}
 
-    items = log_store.snapshot()  # full buffer; filter then limit
+    from .logs import context_id_of
+    slots = log_store.snapshot()  # [{received_at, entry}] full buffer; filter then limit
     out = []
-    for e in items:
-        if not query.in_time_range(e["received_at"], since_ts, until_ts):
+    for slot in slots:
+        if not query.in_time_range(slot["received_at"], since_ts, until_ts):
             continue
-        if sev_set is not None and str(e.get("severity", "")).upper() not in sev_set:
+        entry = slot["entry"]
+        if sev_set is not None and str(entry.get("severity", "")) not in sev_set:
             continue
-        if context is not None and e.get("context") != context:
+        if context is not None and context_id_of(entry) != context:
             continue
-        out.append(e)
+        out.append(entry)  # ISO-pure LogEntry
 
     n = query.clamp_limit(limit)
     out = out[-n:]
     return {"count": len(out), "entries": out}
+
+
+# --------------------------------------------------------------------------
+# Log forwarding (optional sink) — POST each LogEntry to a configured URL.
+# Separate from SSE; OFF until started. URL from TRACEON_LOG_FORWARD_URL.
+# --------------------------------------------------------------------------
+class ForwardStartRequest(BaseModel):
+    url: str | None = None  # optional override of the env-configured URL
+
+
+@app.get("/logs/forwarding", tags=["forwarding"])
+def forwarding_status():
+    return forwarder.status()
+
+
+@app.post("/logs/forwarding/start", tags=["forwarding"])
+def forwarding_start(req: ForwardStartRequest | None = None):
+    if req is not None and req.url:
+        forwarder.set_url(req.url)
+    try:
+        forwarder.start()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return forwarder.status()
+
+
+@app.post("/logs/forwarding/stop", tags=["forwarding"])
+def forwarding_stop():
+    forwarder.stop()
+    return forwarder.status()
 
 
 # --------------------------------------------------------------------------

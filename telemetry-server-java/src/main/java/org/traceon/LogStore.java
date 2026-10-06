@@ -1,12 +1,17 @@
 /*
- * Logs: a thread-safe bounded ring buffer of log entries, separate from telemetry.
+ * Logs: thread-safe ring buffer of ISO 17978-3 LogEntry (Table 316) objects.
  *
- * The board publishes JSON log messages on TRAceON/logs with four string fields:
- *   {"timestamp":"2026-10-06T15:37:24.607Z","context":"SensorTask",
- *    "severity":"WARN","msg":"Humidity sensor returned no data"}
+ * Board publishes JSON on TRAceON/logs:
+ *   { "timestamp": "<ISO-8601>",
+ *     "context":  { "type": "AUTOSAR_DLT", "application_id": "TRAC",
+ *                   "context_id": "SensorTask", "session": "", "session_id": "",
+ *                   "message_id": "" },
+ *     "severity": "DLT_WARN",
+ *     "msg":      "..." }
  *
- * Parsing is lenient: a malformed / non-JSON payload still yields an entry
- * (severity "UNKNOWN", raw text as msg) so nothing is silently dropped.
+ * Entries are stored ISO-pure (timestamp/context/severity/msg). A private
+ * server-side receive time is kept in the slot for history time-filtering only.
+ * Legacy bare severities (WARN/ERROR/...) are mapped to DLT_* defensively.
  */
 package org.traceon;
 
@@ -14,80 +19,114 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class LogStore {
 
     public static final LogStore INSTANCE = new LogStore(Config.LOG_BUFFER_SIZE);
 
-    /** The incoming JSON shape (deserialized by JSON-B). All strings. */
-    public static final class LogMessage {
-        public String timestamp;
-        public String context;
-        public String severity;
-        public String msg;
-    }
-
-    /** A stored log entry (public fields → JSON-B serializes directly for the API). */
-    public static final class LogEntry {
-        public long seq;
-        public long received_at_ms;   // server-side receipt time (diagnostics)
-        public String timestamp;      // board's ISO-8601 date-time (string)
-        public String context;
-        public String severity;
-        public String msg;
+    /** ISO LogEntry — kept as a parsed JSON map so JSON-B re-serializes it as-is. */
+    public static final class Slot {
+        public long received_at_ms;      // private: for history filtering only
+        public Map<String, Object> entry; // the ISO LogEntry (what we expose)
     }
 
     private final int maxLen;
-    private final Deque<LogEntry> buf = new ArrayDeque<>();
-    private final AtomicLong seq = new AtomicLong(0);
+    private final Deque<Slot> buf = new ArrayDeque<>();
+    private final AtomicLong count = new AtomicLong(0);
     private final Object lock = new Object();
 
     private LogStore(int maxLen) { this.maxLen = maxLen; }
 
-    public LogEntry add(String payload) {
-        LogEntry e = parse(payload);
-        e.seq = seq.incrementAndGet();
-        e.received_at_ms = System.currentTimeMillis();
+    /** Parse a raw payload into an ISO LogEntry map, add to the buffer, return it. */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> add(String payload) {
+        Map<String, Object> entry;
+        try {
+            entry = Json.fromJson(payload, Map.class);
+            if (entry == null) throw new IllegalArgumentException("null");
+            normalize(entry);
+        } catch (Exception e) {
+            entry = fallback(payload);
+        }
+        Slot s = new Slot();
+        s.received_at_ms = System.currentTimeMillis();
+        s.entry = entry;
         synchronized (lock) {
             if (buf.size() >= maxLen) buf.pollFirst();
-            buf.addLast(e);
+            buf.addLast(s);
         }
-        return e;
+        count.incrementAndGet();
+        return entry;
     }
 
-    public List<LogEntry> snapshot(Integer limit) {
+    /** Internal slots (entry + received_at), oldest first — for history filtering. */
+    public List<Slot> slots() {
+        synchronized (lock) { return new ArrayList<>(buf); }
+    }
+
+    /** Plain list of ISO LogEntry objects (ISO-pure). */
+    public List<Map<String, Object>> entries() {
         synchronized (lock) {
-            List<LogEntry> all = new ArrayList<>(buf);
-            if (limit != null && limit >= 0 && limit < all.size()) {
-                return new ArrayList<>(all.subList(all.size() - limit, all.size()));
-            }
-            return all;
+            List<Map<String, Object>> out = new ArrayList<>(buf.size());
+            for (Slot s : buf) out.add(s.entry);
+            return out;
         }
     }
 
-    public long count() { return seq.get(); }
+    public long count() { return count.get(); }
 
-    static LogEntry parse(String payload) {
-        LogEntry e = new LogEntry();
-        try {
-            LogMessage m = Json.fromJson(payload, LogMessage.class);
-            if (m != null) {
-                e.timestamp = nullToEmpty(m.timestamp);
-                e.context = nullToEmpty(m.context);
-                e.severity = nullToEmpty(m.severity);
-                e.msg = nullToEmpty(m.msg);
-                return e;
-            }
-        } catch (Exception ignored) {
-            // fall through to lenient fallback
+    // ---- helpers ----
+    static void normalize(Map<String, Object> entry) {
+        entry.putIfAbsent("timestamp", "");
+        entry.putIfAbsent("msg", "");
+        Object sev = entry.get("severity");
+        entry.put("severity", mapSeverity(sev == null ? "" : sev.toString()));
+        // context left as-is (an object from the board); if a bare string slipped
+        // through, wrap it minimally.
+        Object ctx = entry.get("context");
+        if (!(ctx instanceof Map)) {
+            Map<String, Object> c = new java.util.LinkedHashMap<>();
+            c.put("type", "AUTOSAR_DLT");
+            c.put("context_id", ctx == null ? "" : ctx.toString());
+            entry.put("context", c);
         }
-        e.timestamp = "";
-        e.context = "";
-        e.severity = "UNKNOWN";
-        e.msg = payload == null ? "" : payload.strip();
+    }
+
+    static Map<String, Object> fallback(String payload) {
+        Map<String, Object> e = new java.util.LinkedHashMap<>();
+        e.put("timestamp", "");
+        Map<String, Object> c = new java.util.LinkedHashMap<>();
+        c.put("type", "AUTOSAR_DLT"); c.put("context_id", "");
+        e.put("context", c);
+        e.put("severity", "DLT_INFO");
+        e.put("msg", payload == null ? "" : payload.strip());
         return e;
     }
 
-    private static String nullToEmpty(String s) { return s == null ? "" : s; }
+    /** Map legacy/bare severity to DLT_*; pass through already-DLT values. */
+    static String mapSeverity(String s) {
+        String t = s.trim();
+        switch (t.toUpperCase()) {
+            case "DLT_FATAL": case "FATAL": return "DLT_FATAL";
+            case "DLT_ERROR": case "ERROR": return "DLT_ERROR";
+            case "DLT_WARN": case "WARN": case "WARNING": return "DLT_WARN";
+            case "DLT_INFO": case "INFO": return "DLT_INFO";
+            case "DLT_DEBUG": case "DEBUG": return "DLT_DEBUG";
+            case "DLT_VERBOSE": case "VERBOSE": return "DLT_VERBOSE";
+            default: return t.isEmpty() ? "DLT_INFO" : t;
+        }
+    }
+
+    /** Extract AUTOSAR_DLT context_id from an entry (for history filtering). */
+    @SuppressWarnings("unchecked")
+    static String contextIdOf(Map<String, Object> entry) {
+        Object ctx = entry.get("context");
+        if (ctx instanceof Map) {
+            Object id = ((Map<String, Object>) ctx).get("context_id");
+            return id == null ? "" : id.toString();
+        }
+        return ctx == null ? "" : ctx.toString();
+    }
 }

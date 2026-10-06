@@ -21,7 +21,9 @@
 #undef  NXD_MQTT_MAX_TOPIC_NAME_LENGTH
 #undef  NXD_MQTT_MAX_MESSAGE_LENGTH
 #define NXD_MQTT_MAX_TOPIC_NAME_LENGTH 70
-#define NXD_MQTT_MAX_MESSAGE_LENGTH 170
+/* ISO LogEntry (AUTOSAR_DLT context object) is larger than the old flat log,
+ * so allow a bigger payload. Keep in sync with logger.c LOG_JSON_MAX. */
+#define NXD_MQTT_MAX_MESSAGE_LENGTH 320
 
 #define MQTT_CLIENT_STACK_SIZE 5120
 

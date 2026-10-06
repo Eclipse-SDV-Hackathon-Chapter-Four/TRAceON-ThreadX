@@ -33,7 +33,7 @@ mvn clean package
 java -jar target/telemetry-telemetry-server-java-jar-with-dependencies.jar
 ```
 
-Server listens on **:8081** (the Python server uses 8080, so both can run at once).
+Server listens on **:8082** (the Python server uses 8083, so both can run at once).
 Override via env vars: `TRACEON_MQTT_HOST`, `TRACEON_MQTT_PORT`, `TRACEON_SENSOR_TOPIC`,
 `TRACEON_COMMAND_TOPIC`, `TRACEON_COMPONENT`, `TRACEON_HTTP_PORT`.
 
@@ -41,7 +41,7 @@ Override via env vars: `TRACEON_MQTT_HOST`, `TRACEON_MQTT_PORT`, `TRACEON_SENSOR
 
 Like the broker and the Python server, running in Docker publishes the port
 through Docker's network layer, bypassing the managed Mac's application firewall.
-Teammates on the same WiFi reach it at `http://<LAN-ip>:8081`.
+Teammates on the same WiFi reach it at `http://<LAN-ip>:8082`.
 
 ```bash
 cd ~/repos/IEH/TRAceON-ThreadX/telemetry-server-java
@@ -52,7 +52,7 @@ docker build \
   --build-arg HTTP_PROXY= --build-arg HTTPS_PROXY= \
   -t traceon-telemetry-server-java:latest .
 
-docker run -d --name traceon-server-java -p 8081:8081 traceon-telemetry-server-java:latest
+docker run -d --name traceon-server-java -p 8082:8082 traceon-telemetry-server-java:latest
 
 docker logs -f traceon-server-java
 docker stop traceon-server-java
@@ -65,9 +65,17 @@ The container reaches the broker via `host.docker.internal:1883` (image default)
 
 Streaming (Server-Sent Events) — the primary telemetry/logs interface:
 - `GET  /telemetry/entries`  (live telemetry, SSE)
-- `GET  /logs/entries`       (live logs, SSE). Board publishes JSON on `TRAceON/logs`
-  with four string fields `{timestamp (ISO-8601), context, severity, msg}`; the server
-  adds `seq` + `received_at_ms`. Malformed payloads → `severity:"UNKNOWN"`, raw as `msg`.
+- `GET  /logs/entries`       (live logs, SSE). Each frame is an ISO **EventEnvelope**
+  `{timestamp (server emit), payload: LogEntry, error}`. Board publishes ISO 17978-3
+  `LogEntry` `{timestamp, context (AUTOSAR_DLT object), severity (DLT_*), msg}` on
+  `TRAceON/logs`.
+
+Log forwarding (optional sink, separate from SSE; `TRACEON_LOG_FORWARD_URL`):
+- `GET  /logs/forwarding`        (status)
+- `POST /logs/forwarding/start`  (optional `{"url":"..."}` override)
+- `POST /logs/forwarding/stop`
+
+> Full API: see [`../API.md`](../API.md).
 
 Simple:
 - `GET  /health`
@@ -88,13 +96,13 @@ SOVD-flavored:
 > resources for one-shot reads.
 
 ```bash
-curl -s localhost:8081/telemetry/latest/temperature_degC
-curl -s localhost:8081/components/TRAceON/data/acceleration_mg
+curl -s localhost:8082/telemetry/latest/temperature_degC
+curl -s localhost:8082/components/TRAceON/data/acceleration_mg
 # {"id":"acceleration_mg","data":[0.1,0.2,981.5]}   <- JSON arrays via JSON-B
-curl -s -X POST localhost:8081/command -H 'content-type: application/json' -d '{"message":"hi"}'
+curl -s -X POST localhost:8082/command -H 'content-type: application/json' -d '{"message":"hi"}'
 # Live streams (keep connection open):
-curl -N localhost:8081/telemetry/entries
-curl -N localhost:8081/logs/entries
+curl -N localhost:8082/telemetry/entries
+curl -N localhost:8082/logs/entries
 ```
 
 Env vars: `TRACEON_MQTT_HOST/PORT`, `TRACEON_SENSOR_TOPIC`, `TRACEON_LOG_TOPIC`

@@ -123,11 +123,16 @@ These are candidate endpoints to refine together:
 Done: both servers stream via **Server-Sent Events (SSE)** and expose a **logs**
 capability (separate from telemetry).
 
-- **Logs** come from the board on `TRAceON/logs` as **JSON** with four string fields:
-  `{timestamp (ISO-8601 date-time), context, severity, msg}` (e.g. warnings about
-  missing sensor data / improbable values). The server adds `seq` + a server-side
-  receipt time, keeps them in a bounded ring buffer (default 200), and falls back to
-  `severity:"UNKNOWN"` (raw as `msg`) on malformed payloads. NOT derived from telemetry.
+- **Logs** come from the board on `TRAceON/logs` as **ISO 17978-3 LogEntry** (Table 316):
+  `{timestamp (ISO-8601), context (AUTOSAR_DLT object with application_id/context_id/...),
+  severity (DLT_FATAL/ERROR/WARN/INFO/DEBUG/VERBOSE), msg}`. Snapshot (`/logs/history`) and
+  the SOVD surface return ISO-pure `LogEntry`; the SSE stream (`/logs/entries`) wraps each in
+  an **EventEnvelope** (Table 5) `{timestamp=server emit, payload=LogEntry, error=null}`.
+  Servers map legacy bare severities (`WARN`) to `DLT_*` defensively; bounded ring buffer
+  (default 100). NOT derived from telemetry.
+- **Log forwarding (IMPLEMENTED 2026-10-06, both servers):** optional sink that POSTs each
+  LogEntry to `TRACEON_LOG_FORWARD_URL` (fire-and-forget), separate from SSE, OFF by default,
+  runtime control: `GET /logs/forwarding`, `POST /logs/forwarding/{start,stop}`.
 - **Endpoints (both servers):** streaming is the default interface for the collections.
   - `GET /telemetry/entries` (SSE stream), `GET /logs/entries` (SSE stream)
   - Standalone snapshots removed (`/telemetry/latest`, `/logs`). One-shot reads use
@@ -182,6 +187,49 @@ thread to the async world safely:
 - Hand-rolled SSE vs `sse-starlette`?
 - Stream every message, or throttle/coalesce to N Hz for slow/offscreen clients?
 - Does the stream payload mirror `/telemetry/latest` JSON, or a slimmer per-field event?
+
+## Log forwarding (sink) — EXPLORATION, not yet implemented (2026-10-06)
+
+Idea: the server acts as a **log sink that FORWARDS each received log entry
+onward to an external collector via HTTP POST** (outbound). Runs alongside the
+existing ring buffer + SSE — forwarding is just another consumer of each log.
+
+### How the forward target is configured / started / stopped
+Three models considered:
+
+| Model | Start / stop | Multiple targets | Filtering | SOVD alignment | Complexity |
+|---|---|---|---|---|---|
+| **Env var** `TRACEON_LOG_FORWARD_URL` | set URL + restart | no | no | — | lowest |
+| **(A) Control endpoint** | `POST /logs/forwarding {url}` / `DELETE` | no | possible | — | low |
+| **(B) Subscriptions** | `POST /logs/subscriptions {url,filter}` → id / `DELETE /{id}` | yes | natural | strong | medium |
+
+Leaning toward **request-driven control** (A or B) over the static env var, since
+we want to set the target URL via a request and start/stop at runtime.
+- **(A)** single target, imperative start/stop; quickest to demo.
+- **(B)** multiple webhook subscribers, each with a `severity`/`context` filter;
+  most extensible and closest to the OpenSOVD/ISO event-subscription model.
+
+### Design points to decide when we build it
+- **Payload:** full stored entry (`seq, received_at, timestamp, context,
+  severity, msg`) vs the raw 4-field log; one entry per POST vs **batched**
+  (flush N entries / every few seconds).
+- **Reliability:** fire-and-forget on a background worker (never block MQTT
+  ingestion/SSE; log + drop on failure) vs retry/queue so nothing is lost if the
+  collector is briefly down. v1 likely fire-and-forget.
+- **Filtering:** reuse the existing `severity`/`context` filters so a target can
+  receive only (e.g.) WARN/ERROR.
+- **Scope:** logs only (not telemetry) for now; both servers (Python + Java).
+- **State persistence:** runtime targets are in-memory → lost on restart unless
+  persisted to a file. Conscious choice; fine for hackathon.
+- **Security:** letting a request set an arbitrary POST target makes the server an
+  open relay (SSRF-flavored). Acceptable on a trusted LAN demo; flag if it ever
+  faces untrusted input (allowlist hosts if so).
+- **Testing:** stand up a throwaway HTTP sink (one-file server that prints what it
+  receives) to verify POSTs arrive.
+
+### Recommendation when revisited
+Start with **(A) single control endpoint** for a quick demo, or go straight to
+**(B) subscriptions** if we want the SOVD-aligned, multi-target, filterable shape.
 
 ## Open questions / decisions to make
 

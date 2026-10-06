@@ -26,9 +26,14 @@ class Settings:
     log_buffer_size: int = int(os.getenv("TRACEON_LOG_BUFFER_SIZE", "100"))
     telemetry_history_size: int = int(os.getenv("TRACEON_TELEMETRY_HISTORY_SIZE", "100"))
 
+    # Optional downstream log sink: when forwarding is started, each received
+    # LogEntry is POSTed to this URL. Forwarding is a separate function from SSE
+    # and is OFF until started via the control endpoint.
+    log_forward_url: str = os.getenv("TRACEON_LOG_FORWARD_URL", "")
+
     # HTTP server bind.
     http_host: str = os.getenv("TRACEON_HTTP_HOST", "0.0.0.0")
-    http_port: int = int(os.getenv("TRACEON_HTTP_PORT", "8080"))
+    http_port: int = int(os.getenv("TRACEON_HTTP_PORT", "8083"))
 
 
 settings = Settings()

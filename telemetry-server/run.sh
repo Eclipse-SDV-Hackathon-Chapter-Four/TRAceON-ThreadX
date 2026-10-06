@@ -2,7 +2,7 @@
 # Activate the venv and run the TRAceON telemetry server.
 #   ./run.sh
 # Override settings via env vars, e.g.:
-#   TRACEON_MQTT_HOST=192.168.88.254 TRACEON_HTTP_PORT=8080 ./run.sh
+#   TRACEON_MQTT_HOST=192.168.88.254 TRACEON_HTTP_PORT=8083 ./run.sh
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,0 +1,25 @@
+== REMOTE forwarding demo ==
+
+The SINK runs on the OTHER machine. This window runs the server + control +
+inject here; logs are forwarded over the network to <SINK_HOST>:<PORT>.
+
+-- On the SINK machine, start a sink bound to all interfaces --
+  macOS/Linux:
+    python3 -c "from http.server import BaseHTTPRequestHandler,HTTPServer; \
+H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.rfile.read(int(s.headers.get('content-length',0))),s.send_response(200),s.end_headers(),print('GOT',flush=True))}); \
+HTTPServer(('0.0.0.0',8080),H).serve_forever()"
+
+  Windows (PowerShell, then allow inbound 8080):
+    New-NetFirewallRule -DisplayName sink8080 -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Any
+
+-- Inject test logs here (watch the SINK on the remote machine) --
+  ./scripts/send-log.sh DLT_INFO  Main       'heartbeat'
+  ./scripts/send-log.sh DLT_WARN  SensorTask 'humidity sensor returned no data'
+  while true; do ./scripts/send-log.sh DLT_INFO Main heartbeat; sleep 5; done
+
+The CONTROL pane will NOT enable forwarding until the remote path is green
+(route via LAN + TCP connect). If it keeps retrying, fix the sink host.
+
+-- tmux keys (prefix = Ctrl-a) --
+  panes: prefix h/j/k/l   splits: prefix | / -   reload: prefix r
+  stop:  tmux kill-session -t traceon-fwd-remote

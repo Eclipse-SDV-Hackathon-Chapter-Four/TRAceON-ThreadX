@@ -26,10 +26,19 @@ WORKDIR /app
 COPY --from=build /src/target/telemetry-java-spike-jar-with-dependencies.jar ./server.jar
 
 # Reach the broker (a container publishing 1883 on the host) via the host.
+# Neutralize the runtime HTTP proxy that Docker Desktop injects from
+# ~/.docker/config.json (proxies.default -> 192.168.122.1:3128). That proxy is
+# unreachable from containers on this managed Mac, so without this, outbound
+# POSTs (log forwarding) hang until timeout. java.net.http honors these too.
 ENV TRACEON_MQTT_HOST=host.docker.internal \
     TRACEON_MQTT_PORT=1883 \
-    TRACEON_HTTP_PORT=8081
+    TRACEON_HTTP_PORT=8082 \
+    HTTP_PROXY= \
+    HTTPS_PROXY= \
+    http_proxy= \
+    https_proxy= \
+    NO_PROXY=*
 
-EXPOSE 8081
+EXPOSE 8082
 
 ENTRYPOINT ["java", "-jar", "server.jar"]

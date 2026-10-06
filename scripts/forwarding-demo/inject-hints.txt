@@ -1,0 +1,19 @@
+== INJECT: publish test logs to the broker (TRAceON/logs) ==
+
+Single logs:
+  ./scripts/send-log.sh DLT_INFO  Main       'heartbeat'
+  ./scripts/send-log.sh DLT_WARN  SensorTask 'humidity sensor returned no data'
+  ./scripts/send-log.sh DLT_ERROR MQTT       'broker ping timeout'
+
+Continuous heartbeat (every 5s):
+  while true; do ./scripts/send-log.sh DLT_INFO Main heartbeat; sleep 5; done
+
+Watch the SINK pane for forwarded entries and the CONTROL pane for the rising
+'forwarded' counter.
+
+-- tmux keys (your config: prefix = Ctrl-a) --
+  move between panes : prefix then h / j / k / l
+  split panes        : prefix |   (horizontal)   prefix -   (vertical)
+  reload tmux conf   : prefix r
+  stop the demo      : prefix then :  kill-session
+  (or from any other terminal:  tmux kill-session -t traceon-fwd)

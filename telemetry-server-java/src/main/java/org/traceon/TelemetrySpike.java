@@ -29,6 +29,7 @@ public class TelemetrySpike {
         config.register(TelemetryResource.class);
         config.register(SovdResource.class);
         config.register(HistoryResource.class);
+        config.register(LogControlResource.class);
         // Explicitly register the JSON-B (Yasson) provider. Auto-discovery is
         // unreliable from a shaded fat-jar (merged META-INF/services), so we
         // register the feature directly to guarantee JSON read/write support.

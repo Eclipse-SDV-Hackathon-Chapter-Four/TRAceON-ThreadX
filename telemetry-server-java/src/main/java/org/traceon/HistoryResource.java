@@ -75,19 +75,20 @@ public class HistoryResource {
         Set<String> sevSet = null;
         if (severity != null && !severity.isBlank()) {
             sevSet = java.util.Arrays.stream(severity.split(","))
-                    .map(s -> s.trim().toUpperCase())
+                    .map(s -> LogStore.mapSeverity(s))   // normalize WARN -> DLT_WARN
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toSet());
         }
 
-        List<LogStore.LogEntry> all = LogStore.INSTANCE.snapshot(null);
-        List<LogStore.LogEntry> out = new ArrayList<>();
-        for (LogStore.LogEntry e : all) {
-            if (!Query.inRange(e.received_at_ms, sinceMs, untilMs)) continue;
-            if (sevSet != null && (e.severity == null
-                    || !sevSet.contains(e.severity.toUpperCase()))) continue;
-            if (context != null && !context.equals(e.context)) continue;
-            out.add(e);
+        List<LogStore.Slot> all = LogStore.INSTANCE.slots();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (LogStore.Slot slot : all) {
+            if (!Query.inRange(slot.received_at_ms, sinceMs, untilMs)) continue;
+            Map<String, Object> entry = slot.entry;
+            Object sev = entry.get("severity");
+            if (sevSet != null && (sev == null || !sevSet.contains(sev.toString()))) continue;
+            if (context != null && !context.equals(LogStore.contextIdOf(entry))) continue;
+            out.add(entry);  // ISO-pure LogEntry
         }
 
         out = tail(out, Query.clampLimit(limit));

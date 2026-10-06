@@ -9,38 +9,47 @@
  */
 
 /*
- * TRAceON structured logger.
+ * TRAceON structured logger — emits ISO 17978-3 LogEntry (Table 316) JSON to the
+ * MQTT log topic:
  *
- * Publishes a 4-field JSON log message to the MQTT log topic, matching the
- * schema expected by the TRAceON telemetry servers:
+ *   {
+ *     "timestamp": "<ISO-8601 UTC>",
+ *     "context":   { "type": "AUTOSAR_DLT",
+ *                    "application_id": "TRAC", "context_id": "<ctx>",
+ *                    "session": "", "session_id": "", "message_id": "" },
+ *     "severity":  "DLT_WARN",
+ *     "msg":       "..."
+ *   }
  *
- *   {"timestamp":"<ISO-8601 UTC>","context":"...","severity":"...","msg":"..."}
- *
- * The timestamp is derived from SNTP (UTC). Also mirrors each line to the serial
- * console. Severity is a free string; the TRACEON_SEV_* constants are the
- * conventional values (DEBUG/INFO/WARN/ERROR).
+ * The subsystem name passed by callers maps to the AUTOSAR_DLT `context_id`.
+ * Severity uses the DLT levels. Mirrors each line to the serial console.
  */
 
 #ifndef _LOGGER_H
 #define _LOGGER_H
 
-#define TRACEON_SEV_DEBUG "DEBUG"
-#define TRACEON_SEV_INFO  "INFO"
-#define TRACEON_SEV_WARN  "WARN"
-#define TRACEON_SEV_ERROR "ERROR"
+/* ISO Severity values (AUTOSAR DLT log levels). */
+#define TRACEON_SEV_FATAL   "DLT_FATAL"
+#define TRACEON_SEV_ERROR   "DLT_ERROR"
+#define TRACEON_SEV_WARN    "DLT_WARN"
+#define TRACEON_SEV_INFO    "DLT_INFO"
+#define TRACEON_SEV_DEBUG   "DLT_DEBUG"
+#define TRACEON_SEV_VERBOSE "DLT_VERBOSE"
 
 /*
- * Publish a log message.
- *   context  - subsystem/task name, e.g. "SensorTask" (NULL -> "")
- *   severity - one of TRACEON_SEV_* (NULL -> "INFO")
- *   msg      - the human-readable message (NULL -> "")
+ * Publish a log entry.
+ *   context_id - subsystem/task name -> AUTOSAR_DLT context_id (NULL -> "")
+ *   severity   - one of TRACEON_SEV_* (NULL -> DLT_INFO)
+ *   msg        - the human-readable message (NULL -> "")
  */
-void traceon_log(const char* context, const char* severity, const char* msg);
+void traceon_log(const char* context_id, const char* severity, const char* msg);
 
-/* Convenience wrappers. */
-void traceon_log_debug(const char* context, const char* msg);
-void traceon_log_info(const char* context, const char* msg);
-void traceon_log_warn(const char* context, const char* msg);
-void traceon_log_error(const char* context, const char* msg);
+/* Convenience wrappers (severity preset). */
+void traceon_log_fatal(const char* context_id, const char* msg);
+void traceon_log_error(const char* context_id, const char* msg);
+void traceon_log_warn(const char* context_id, const char* msg);
+void traceon_log_info(const char* context_id, const char* msg);
+void traceon_log_debug(const char* context_id, const char* msg);
+void traceon_log_verbose(const char* context_id, const char* msg);
 
 #endif // _LOGGER_H
