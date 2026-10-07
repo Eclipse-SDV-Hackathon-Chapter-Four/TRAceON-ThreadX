@@ -15,14 +15,15 @@ in-memory queue backs up and eventually drops entries (`dropped` counter rises).
 - **Path forward:** a small worker pool or async HTTP with a short connect
   timeout; make the timeout configurable.
 
-### 2. SSE slow-client isolation is not unit-tested
+### 2. SSE slow-client isolation ✅ RESOLVED
 The Java `SseRegistry` gives each subscriber its own bounded queue + writer
-thread (drop-oldest) so one slow client can't block the MQTT publisher. This is
-sound by construction and the server was verified running, but there is **no
-automated test** asserting "a stalled client doesn't stall the others."
-- **Impact:** a concurrency regression here could go unnoticed.
-- **Path forward:** an integration test that opens two SSE clients, stalls one,
-  and asserts the other keeps receiving.
+thread (drop-oldest) so one slow client can't block the MQTT publisher.
+- **Status:** now covered by `SseRegistryTest` (2 tests): a stuck subscriber
+  (its socket write blocks) does not stall a fast subscriber, and `publish()`
+  stays non-blocking even under a 5000-message flood that overruns the bounded
+  queue. Both tests use `@Timeout(SEPARATE_THREAD)` so a blocking-publish
+  regression fails cleanly instead of hanging CI — verified by a negative
+  control (a blocking `publish()` fails in ~10 s, not a hang).
 
 ### 3. Firmware MQTT client-ID is fixed
 The board uses MQTT client id `TRAceON`; the Java server uses `traceon-java`.

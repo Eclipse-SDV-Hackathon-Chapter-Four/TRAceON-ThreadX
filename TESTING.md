@@ -17,7 +17,7 @@ Or run a single suite directly:
 | Suite | Count | Framework | Command |
 |---|---|---|---|
 | Python server | 39 | pytest | `cd telemetry-server && ./setup.sh && . .venv/bin/activate && pip install -r requirements-dev.txt && pytest` |
-| Java server | 22 | JUnit 5 | `cd telemetry-server-java && mvn -B test` |
+| Java server | 24 | JUnit 5 | `cd telemetry-server-java && mvn -B test` |
 | Firmware (pure logic) | 13 | custom host harness | `./app/common/tests/run.sh` |
 
 ---
@@ -55,7 +55,7 @@ runs in CI without a broker.
 ```bash
 cd telemetry-server-java
 export JAVA_HOME="$(/usr/libexec/java_home 2>/dev/null || echo /opt/homebrew/opt/openjdk)"
-mvn -B test                             # -> 22 passed
+mvn -B test                             # -> 24 passed
 ```
 
 Covered (`src/test/java/org/traceon/`):
