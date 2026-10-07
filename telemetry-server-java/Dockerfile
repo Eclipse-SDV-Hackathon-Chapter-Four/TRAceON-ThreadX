@@ -23,7 +23,7 @@ RUN mvn -B -q clean package
 # ---- Runtime stage ----
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /src/target/telemetry-java-spike-jar-with-dependencies.jar ./server.jar
+COPY --from=build /src/target/telemetry-server-java-jar-with-dependencies.jar ./server.jar
 
 # Reach the broker (a container publishing 1883 on the host) via the host.
 # Neutralize the runtime HTTP proxy that Docker Desktop injects from

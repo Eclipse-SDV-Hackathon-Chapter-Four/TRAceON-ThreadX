@@ -36,7 +36,7 @@ public final class MqttService {
 
     public void start() throws MqttException {
         String uri = "tcp://" + brokerHost + ":" + brokerPort;
-        client = new MqttClient(uri, "traceon-java-spike", new MemoryPersistence());
+        client = new MqttClient(uri, "traceon-java", new MemoryPersistence());
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setAutomaticReconnect(true);
         opts.setCleanSession(true);

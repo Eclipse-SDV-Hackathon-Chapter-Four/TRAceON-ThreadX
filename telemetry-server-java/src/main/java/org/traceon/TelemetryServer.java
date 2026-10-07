@@ -18,7 +18,7 @@ import org.eclipse.jetty.server.Server;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
-public class TelemetrySpike {
+public class TelemetryServer {
 
     public static void main(String[] args) throws Exception {
         // 1. MQTT (Eclipse Paho)

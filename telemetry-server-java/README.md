@@ -123,7 +123,7 @@ src/main/java/org/traceon/
   SseServlet.java        plain async Jakarta servlet for the two SSE streams
   TelemetryResource.java JAX-RS: /health, /telemetry/latest(/{field}), POST /command, /logs
   SovdResource.java      JAX-RS: /components/{component}/data(/{resourceId})
-  TelemetrySpike.java    main: Jetty + Jersey + JSON-B + SSE servlets wiring
+  TelemetryServer.java   main: Jetty + Jersey + JSON-B + SSE servlets wiring
 ```
 
 ## Gotcha #2: SSE on embedded Jetty — don't use JAX-RS SSE here
