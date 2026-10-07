@@ -52,6 +52,10 @@ extern TX_EVENT_FLAGS_GROUP mqtt_app_flag;
 #define MQTT_RECEIVE_EVENT 1
 #define MQTT_MESSAGE_READY 2
 #define MQTT_ALL_EVENTS    3
+/* Set by the MQTT thread while connected, cleared on disconnect. The telemetry
+ * thread checks this before requesting a publish, so nothing is published
+ * before the client is connected (or while it is down). */
+#define MQTT_CONNECTED     4
 
 
 #endif // _CLOUD_CONFIG_H

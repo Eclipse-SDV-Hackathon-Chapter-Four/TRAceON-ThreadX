@@ -30,8 +30,13 @@
 
 void mqtt_thread_entry(ULONG thread_input);
 
+/* Returns TX_TRUE while the MQTT client is connected to the broker (tracks the
+ * MQTT_CONNECTED event-flag bit). Used to gate publishing. */
+UINT mqtt_is_connected(void);
+
 /* Publish a pre-formatted log JSON payload to the MQTT log topic.
- * Returns NXD_MQTT_SUCCESS on success. Safe no-op if the client isn't connected. */
+ * Returns NXD_MQTT_SUCCESS on success, or an error code if not connected /
+ * the publish fails. */
 UINT mqtt_publish_log(const char* json, UINT length);
 
 /* Define the symbol for signaling a received message. */

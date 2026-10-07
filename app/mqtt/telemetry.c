@@ -13,6 +13,7 @@
 
 #include "cloud_config.h"
 #include "logger.h"
+#include "mqtt_client.h"
 #include "nanoprintf.h" 
 #include "sensor.h"
 #include "telemetry.h"
@@ -196,7 +197,12 @@ void telemetry_thread_entry(ULONG parameter)
                 printf("Telemetry did not change.\r\n");
             }
         #endif
-        tx_event_flags_set(&mqtt_app_flag, MQTT_MESSAGE_READY, TX_OR);
+        // Request a telemetry publish only when the MQTT client is connected,
+        // so we never signal the MQTT thread to publish before connect / while
+        // disconnected.
+        if (mqtt_is_connected() == TX_TRUE) {
+            tx_event_flags_set(&mqtt_app_flag, MQTT_MESSAGE_READY, TX_OR);
+        }
         current_sensor_data = new_sensor_data;
 
 #ifdef DEMO_LOGS

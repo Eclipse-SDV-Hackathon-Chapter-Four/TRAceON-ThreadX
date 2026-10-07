@@ -41,7 +41,6 @@ TX_THREAD telemetry_thread;
 TX_THREAD mqtt_thread;
 ULONG telemetry_thread_stack[ECLIPSETX_THREAD_STACK_SIZE / sizeof(ULONG)];
 ULONG mqtt_thread_stack[ECLIPSETX_THREAD_STACK_SIZE / sizeof(ULONG)];
-TX_EVENT_FLAGS_GROUP mqtt_app_flag;
 
 void tx_application_define(void* first_unused_memory)
 {
@@ -53,6 +52,11 @@ void tx_application_define(void* first_unused_memory)
 
     /* Create the message queue shared by the telemetry and MQTT threads */
     tx_queue_create(&mqtt_queue, "Shared queue", TX_1_ULONG, pointer, QUEUE_SIZE*sizeof(ULONG));
+
+    /* Create the MQTT event-flags group BEFORE the threads start. Previously it
+     * was created inside the MQTT thread, so the telemetry thread could set
+     * flags on an uninitialized group (startup race). */
+    tx_event_flags_create(&mqtt_app_flag, "MQTT event");
 
     // Create Telemetry thread
     UINT status = tx_thread_create(&telemetry_thread,

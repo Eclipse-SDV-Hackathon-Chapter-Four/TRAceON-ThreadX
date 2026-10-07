@@ -39,12 +39,30 @@ static NXD_MQTT_CLIENT mqtt_client;
 static VOID client_disconnect_func(NXD_MQTT_CLIENT *client_ptr)
 {
     NX_PARAMETER_NOT_USED(client_ptr);
+    /* Clear the connected gate so the telemetry thread stops requesting
+     * publishes until we reconnect. */
+    tx_event_flags_set(&mqtt_app_flag, ~MQTT_CONNECTED, TX_AND);
     printf("client disconnected from broker.\r\n");
+}
+
+/* Returns TX_TRUE while connected (peeks MQTT_CONNECTED without consuming it). */
+UINT mqtt_is_connected(void)
+{
+    ULONG flags = 0;
+    UINT status = tx_event_flags_get(&mqtt_app_flag, MQTT_CONNECTED, TX_AND,
+                                     &flags, TX_NO_WAIT);
+    return (status == TX_SUCCESS) ? TX_TRUE : TX_FALSE;
 }
 
 /* Publish a pre-formatted log JSON payload to MQTT_LOG_TOPIC (QoS1). */
 UINT mqtt_publish_log(const char* json, UINT length)
 {
+    /* True no-op if the client isn't connected (prevents publishing on an
+     * uninitialized/disconnected client). */
+    if (mqtt_is_connected() != TX_TRUE)
+    {
+        return NXD_MQTT_NOT_CONNECTED;
+    }
     UINT status = nxd_mqtt_client_publish(&mqtt_client,
                                           MQTT_LOG_TOPIC, STRLEN(MQTT_LOG_TOPIC),
                                           (CHAR*)json, length, 0, QOS1, NX_WAIT_FOREVER);
@@ -124,11 +142,6 @@ static void mqtt_thread_work(NX_IP *ip_ptr, NX_PACKET_POOL *pool_ptr){
     /* Register the disconnect notification function. */
     nxd_mqtt_client_disconnect_notify_set(&mqtt_client, client_disconnect_func);
 
-    /* Create an event flag for this demo. */
-    status = tx_event_flags_create(&mqtt_app_flag, "MQTT event");
-    if (status)
-        error_count++;
-
     server_ip.nxd_ip_version = 4;
     server_ip.nxd_ip_address.v4 = MQTT_LOCAL_BROKER_IP;
 
@@ -141,6 +154,7 @@ static void mqtt_thread_work(NX_IP *ip_ptr, NX_PACKET_POOL *pool_ptr){
     }
     else{
         printf("MQTT Client connected.\r\n");
+        tx_event_flags_set(&mqtt_app_flag, MQTT_CONNECTED, TX_OR);
     }
 
     /* Subscribe to the topic with QoS level 0. */
