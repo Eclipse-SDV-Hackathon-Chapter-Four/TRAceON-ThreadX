@@ -49,6 +49,9 @@ public class DashboardServlet extends HttpServlet {
   .card h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:1px; color:#7d8590; }
   .metric { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #21262d; }
   .metric .v { font-weight:600; }
+  .vec-label { padding:6px 0 2px; color:#e6edf3; }
+  .metric.sub { padding:2px 0 2px 16px; border-bottom:none; color:#9aa5b1; }
+  .metric.sub span:first-child { color:#7d8590; }
   #logs { height:70vh; overflow-y:auto; }
   .log { padding:4px 8px; border-radius:4px; margin-bottom:3px; white-space:pre-wrap;
          border-left:3px solid #30363d; }
@@ -83,15 +86,25 @@ public class DashboardServlet extends HttpServlet {
   const tEl = document.getElementById("telemetry");
   const lEl = document.getElementById("logs");
   const sEl = document.getElementById("status");
-  function fmt(v){ return Array.isArray(v) ? v.map(x=>(+x).toFixed(1)).join(", ") : (typeof v==="number"? v.toFixed(2): v); }
 
   const tel = new EventSource("/telemetry/entries");
   tel.onopen = () => { sEl.textContent="connected"; sEl.className="up"; };
   tel.onerror = () => { sEl.textContent="disconnected"; sEl.className="down"; };
   tel.onmessage = (e) => {
     let d; try { d = JSON.parse(e.data); } catch { return; }
-    tEl.innerHTML = F.filter(k=>k in d).map(k =>
-      `<div class="metric"><span>${k}</span><span class="v">${fmt(d[k])}</span></div>`).join("")
+    tEl.innerHTML = F.filter(k=>k in d).map(k => {
+      const v = d[k];
+      if (Array.isArray(v)) {
+        // Vector: field name on its own line, then X/Y/Z each on their own row.
+        const axes = ["X","Y","Z"];
+        const rows = v.map((n,i) =>
+          `<div class="metric sub"><span>${axes[i]||i}</span>`
+          + `<span class="v">${(+n).toFixed(1)}</span></div>`).join("");
+        return `<div class="vec-label">${k}</div>${rows}`;
+      }
+      return `<div class="metric"><span>${k}</span>`
+           + `<span class="v">${typeof v==="number"? v.toFixed(2): v}</span></div>`;
+    }).join("")
       || '<div class="metric"><span>(no fields yet)</span><span class="v"></span></div>';
   };
 
