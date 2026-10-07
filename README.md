@@ -22,6 +22,22 @@ This starter application is an adaptation of a sample developed originally by Mi
 
 We removed code providing support for Azure IoT Cloud. The only board supported is the MXChip AZ3166 for the time being.
 
+## TRAceON project documentation
+
+This repository has been extended into the **TRAceON** telemetry + ISO 17978-3
+(SOVD) logging demo. Project-specific docs:
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — end-to-end overview: AZ3166 → broker → server → forwarding sink, and the Eclipse components used.
+- [API.md](API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
+- [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
+- [TESTING-LOG-FORWARDING.md](TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
+- [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT to make cross-machine forwarding network-agnostic.
+- [BUILD_AND_RUN.md](BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
+- [telemetry-server-PLAN.md](telemetry-server-PLAN.md) — server design notes and decisions.
+- `scripts/forwarding-demo/` — one-command tmux demos (`start.sh` local, `start-remote.sh` remote).
+
+The sections below are the original Eclipse ThreadX starter instructions.
+
 ## Cloning this repository
 Eclipse ThreadX and Eclipse ThreadX NetX Duo are included as submodules.
 
