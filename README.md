@@ -31,6 +31,7 @@ This repository has been extended into the **TRAceON** telemetry + ISO 17978-3
 - [API.md](API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
 - [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
 - [TESTING-LOG-FORWARDING.md](TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
+- [TESTING.md](TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
 - [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT to make cross-machine forwarding network-agnostic.
 - [BUILD_AND_RUN.md](BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
 - [telemetry-server-PLAN.md](telemetry-server-PLAN.md) — server design notes and decisions.
