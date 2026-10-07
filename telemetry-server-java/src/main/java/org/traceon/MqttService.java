@@ -15,10 +15,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 public final class MqttService {
@@ -45,9 +47,44 @@ public final class MqttService {
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setAutomaticReconnect(true);
         opts.setCleanSession(true);
-        client.connect(opts);
-        TelemetryStore.INSTANCE.setMqttConnected(true);
 
+        // Track connection state LIVE (so /health is truthful after a broker
+        // drop) and (re-)subscribe whenever the connection (re)establishes.
+        client.setCallback(new MqttCallbackExtended() {
+            @Override public void connectComplete(boolean reconnect, String serverURI) {
+                TelemetryStore.INSTANCE.setMqttConnected(true);
+                try {
+                    subscribeAll();
+                } catch (MqttException e) {
+                    System.err.println("Re-subscribe after connect failed: " + e.getMessage());
+                }
+                System.out.println((reconnect ? "Reconnected" : "Connected")
+                        + " to " + serverURI + "; subscribed to "
+                        + sensorTopic + " and " + logTopic);
+            }
+            @Override public void connectionLost(Throwable cause) {
+                TelemetryStore.INSTANCE.setMqttConnected(false);
+                System.err.println("MQTT connection lost: "
+                        + (cause == null ? "unknown" : cause.getMessage()));
+            }
+            @Override public void messageArrived(String topic, MqttMessage message) { /* per-topic listeners handle delivery */ }
+            @Override public void deliveryComplete(IMqttDeliveryToken token) { }
+        });
+
+        // Non-blocking startup: a down broker must not abort the server (matches
+        // the Python server). setAutomaticReconnect + the callback above will
+        // connect+subscribe as soon as the broker is reachable.
+        try {
+            client.connect(opts);
+        } catch (MqttException e) {
+            System.err.println("Initial MQTT connect failed (" + e.getMessage()
+                    + "); will keep retrying in the background.");
+        }
+        System.out.println("MQTT client started for " + uri);
+    }
+
+    /** (Re)subscribe to both topics. Idempotent; called on every (re)connect. */
+    private void subscribeAll() throws MqttException {
         // Telemetry topic -> store + SSE "telemetry" channel.
         client.subscribe(sensorTopic, 1, (IMqttMessageListener) (topic, msg) -> {
             TelemetryStore.INSTANCE.update(parse(new String(msg.getPayload())));
@@ -62,8 +99,6 @@ public final class MqttService {
             // Separate optional sink: forward the raw LogEntry via POST (if started).
             LogForwarder.INSTANCE.submit(entry);
         });
-
-        System.out.println("Subscribed to " + sensorTopic + " and " + logTopic + " at " + uri);
     }
 
     public boolean publishCommand(String message) {
