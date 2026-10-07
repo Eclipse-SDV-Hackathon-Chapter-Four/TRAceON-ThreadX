@@ -420,3 +420,144 @@ TESTING-LOG-FORWARDING.md): `nc -vz <overlay-wsl> 8080` must succeed, and
   networking) as the sink peer instead.
 - None of this changes TRAceON code — only the forward URL points at the overlay
   IP, exactly as in the main plan.
+
+
+---
+
+## Appendix: Two native Linux machines (recommended happy path)
+
+If both peers are **native x86_64 Linux machines**, this is the simplest and
+most reliable topology — it removes every obstacle encountered elsewhere in this
+document:
+
+- **No emulation** → the amd64 CARL/Keycloak images run natively (kills the
+  Mac blocker).
+- **No WSL2 kernel gaps** → native kernels ship/allow WireGuard, GRE (`ip_gre`),
+  and the netfilter features NetBird/EDGAR need.
+- **No Docker-Desktop-on-Mac quirks** → the `/provision` bind mount and
+  `grafana→loki` lean-subset issues were Mac-specific and don't occur here.
+
+This is openDuT's primary supported setup (their own hardware guide uses Linux
+hosts / Raspberry Pis for EDGAR).
+
+### Roles
+
+```
+   AZ3166 (ThreadX) ── plain Wi-Fi / MQTT (NOT meshed) ──┐
+                                                         ▼
+┌──────────────────────────────┐  GRE/WireGuard  ┌──────────────────────────────┐
+│ linux-a  (x86_64)             │◀═══ overlay ═══▶│ linux-b  (x86_64)             │
+│  • CARL + Keycloak + NetBird  │                 │  • EDGAR peer "linux-b"       │
+│  • Mosquitto broker           │                 │  • Rust log sink :8080        │
+│  • telemetry server (fwd)     │                 │                               │
+│  • EDGAR peer "linux-a"       │                 └──────────────────────────────┘
+└──────────────────────────────┘
+```
+
+- **linux-a** hosts the backend (CARL/Keycloak/NetBird), the broker, the
+  telemetry server, and one EDGAR peer.
+- **linux-b** hosts the second EDGAR peer and the Rust sink.
+- The **AZ3166** publishes to the broker over plain Wi-Fi (unchanged, not meshed).
+
+> CARL may instead live on a third host (or cloud VM) that both peers can reach;
+> co-locating it on linux-a is just the fewest-moving-parts option.
+
+### Prerequisites (both machines)
+
+```bash
+# Docker + compose (for CARL on linux-a); EDGAR needs these kernel modules:
+sudo modprobe wireguard && echo "wireguard ok"
+sudo modprobe ip_gre    && echo "ip_gre ok"
+# can-utils only if you use CAN (we don't): EDGAR setup takes --skip-can
+```
+
+### 1. linux-a — CARL backend (localenv)
+
+```bash
+git clone https://github.com/eclipse-opendut/opendut.git && cd opendut
+export OPENDUT_REPO_ROOT=$(git rev-parse --show-toplevel)
+# provision secrets, then bring up the stack (native amd64 — no emulation)
+docker compose --file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/docker-compose.yml \
+  --env-file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/.env.development \
+  up --build provision-secrets
+docker cp opendut-provision-secrets:/provision/ \
+  $OPENDUT_REPO_ROOT/.ci/deploy/localenv/data/secrets/
+docker compose --file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/docker-compose.yml \
+  --env-file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/.env.development \
+  --env-file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/data/secrets/.env \
+  up --detach --build
+```
+Notes vs. the Mac attempt:
+- On native Linux you should **not** need the `/provision` mount repoint or the
+  `grafana→loki` workaround — those were Docker-Desktop-on-Mac artifacts.
+- Apply the **empty proxy build-args** only if you're behind the same corporate
+  proxy (`--build-arg http_proxy= ...`); otherwise omit.
+- Resolve the `*.opendut.local` domains (real DNS, or `/etc/hosts`).
+
+### 2. linux-a — create peers + cluster via CLEO
+
+```bash
+opendut-cleo create peer --name linux-a --location lab
+opendut-cleo create peer --name linux-b --location lab
+opendut-cleo create network-interface --peer-id <A_ID> --type eth --name eth0
+opendut-cleo create network-interface --peer-id <B_ID> --type eth --name eth0
+opendut-cleo generate-setup-string --id <A_ID>   # -> SETUP_A
+opendut-cleo generate-setup-string --id <B_ID>   # -> SETUP_B
+```
+
+### 3. Both machines — install EDGAR
+
+On **linux-a** (paste SETUP_A) and **linux-b** (paste SETUP_B):
+```bash
+sudo ./opendut-edgar setup managed --skip-can
+ip link        # verify wt0 (WireGuard) + br-opendut exist
+sudo wg        # verify the WireGuard peer link
+```
+
+### 4. linux-a — define + deploy the cluster
+
+```bash
+opendut-cleo create cluster-configuration --name traceon \
+    --leader-id <A_ID> --peer-ids <A_ID>,<B_ID>
+opendut-cleo create cluster-deployment --id <CLUSTER_ID>
+```
+Deploying establishes the GRE-over-WireGuard links between the two EDGARs.
+
+### 5. Read overlay IPs + pre-flight
+
+```bash
+# on each machine:
+ip address show br-opendut      # or: ip address show wt0   -> note linux-b's overlay IP
+# from linux-a, before enabling forwarding (same discipline as TESTING-LOG-FORWARDING.md):
+nc -vz -w 3 <overlay-linux-b> 8080           # must succeed
+route -n get <overlay-linux-b> | grep interface   # must be the openDuT iface, not a VPN
+```
+
+### 6. Point forwarding at the overlay IP
+
+```bash
+# linux-b: start the Rust sink on 0.0.0.0:8080 (reachable over the overlay)
+# linux-a: start the telemetry server, then:
+curl -s -X POST localhost:8082/logs/forwarding/start \
+     -H 'content-type: application/json' \
+     -d '{"url":"http://<overlay-linux-b>:8080/internal/logs"}'
+```
+
+Data path: AZ3166 → linux-a broker (Wi-Fi) → telemetry server → **POST over the
+openDuT overlay** → Rust sink on linux-b. No dependence on the local LAN between
+the two Linux boxes — openDuT tunnels it, so AP isolation / host firewalls are
+irrelevant.
+
+### Why this is the low-risk option
+
+| Concern | Mac-only | Linux + WSL2 | **Two native Linux** |
+|---|---|---|---|
+| CARL/Keycloak images | amd64 **emulated → blocked** | native on Linux side | **native ✓** |
+| EDGAR runnable | **no (macOS)** | WSL2: needs custom kernel | **native ✓** |
+| WireGuard/GRE/netfilter | n/a | WSL2 gaps likely | **stock/available ✓** |
+| Docker mount/network quirks | several (Mac) | some (WSL) | **none ✓** |
+| TRAceON code changes | none | none | **none** (forward URL → overlay) |
+
+Everything the earlier appendices flagged as risky collapses to "just works" with
+two native Linux hosts. The only TRAceON-side change remains the forward URL
+pointing at the overlay IP.
