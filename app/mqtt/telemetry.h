@@ -37,7 +37,11 @@ typedef struct{
     float magnetic_mG[3];
 } sensor_data;
 
+// Size of the plain-text telemetry string (5 rows * 40 chars + headroom).
+// Compile-time constant so callers can size stack buffers from it.
+#define TELEMETRY_BUFFER_SIZE 256
+
 void telemetry_thread_entry(ULONG parameter);
-void get_current_telemetry_string(char* output);
+void get_current_telemetry_string(char* output, int output_size);
 
 #endif // _TELEMETRY_H

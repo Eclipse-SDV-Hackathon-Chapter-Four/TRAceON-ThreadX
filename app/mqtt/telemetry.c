@@ -24,10 +24,10 @@ static const int32_t telemetry_interval = 5;
 // Current data
 static sensor_data current_sensor_data;
 
-// Telemetry output
-static const int TELEMETRY_ROWS        = 5;
-static const int TELEMETRY_ROW_SIZE    = 40;
-const int TELEMETRY_BUFFER_SIZE = 256;
+// Telemetry output. Compile-time constants (not VLAs). TELEMETRY_BUFFER_SIZE
+// is defined in telemetry.h and must be >= TELEMETRY_ROWS * TELEMETRY_ROW_SIZE.
+#define TELEMETRY_ROWS        5
+#define TELEMETRY_ROW_SIZE    40
 
 /* Function to compare two float arrays
  * Returns true if arrays are equal within the given tolerance, otherwise false.
@@ -59,7 +59,7 @@ static UINT data_changed(sensor_data const * const current_data, sensor_data con
              compare_float_arrays(current_data->magnetic_mG, new_data->magnetic_mG, 3, 1.0f)); // Could also be 5.0f
 }
 
-static void get_sensor_data_buffer(sensor_data data, char* output){
+static void get_sensor_data_buffer(sensor_data data, char* output, int output_size){
     char buf[TELEMETRY_ROWS][TELEMETRY_ROW_SIZE];
     npf_snprintf(buf[0], TELEMETRY_ROW_SIZE, "Pressure: %.2f\r\n", (double)data.pressure_hPa);
     npf_snprintf(buf[1], TELEMETRY_ROW_SIZE, "Temperature: %.2f\r\n", (double)data.temperature_degC);
@@ -73,13 +73,18 @@ static void get_sensor_data_buffer(sensor_data data, char* output){
                                                 (double)data.magnetic_mG[1],
                                                 (double)data.magnetic_mG[2]);
 
-    // Initialize the new array with an empty string.
+    // Bounded concatenation: never write past output_size (incl. NUL).
+    if (output_size <= 0) { return; }
     output[0] = '\0';
-
-    // Concatenate the strings from the 2D array.
+    int used = 0;  // chars written, excluding NUL
     for (int i = 0; i < TELEMETRY_ROWS; i++) {
-        strcat(output, buf[i]);
+        int remaining = output_size - 1 - used;   // space left for chars (keep NUL)
+        if (remaining <= 0) { break; }
+        for (int j = 0; buf[i][j] != '\0' && remaining > 0; j++, remaining--) {
+            output[used++] = buf[i][j];
+        }
     }
+    output[used] = '\0';
 }
 
 /** 
@@ -90,7 +95,7 @@ static void get_sensor_data_buffer(sensor_data data, char* output){
 #ifdef LOG_TELEMETRY
 static void print_sensor_data(sensor_data data){
     char data_string[TELEMETRY_BUFFER_SIZE];
-    get_sensor_data_buffer(data, data_string);
+    get_sensor_data_buffer(data, data_string, sizeof(data_string));
     printf("=====\r\n");
     printf("%s", data_string);   
     printf("=====\r\n\r\n");
@@ -216,6 +221,6 @@ void telemetry_thread_entry(ULONG parameter)
 /**
  * Returns current telemetry as a string.
  */
-void get_current_telemetry_string(char* output){
-    get_sensor_data_buffer(current_sensor_data, output);
+void get_current_telemetry_string(char* output, int output_size){
+    get_sensor_data_buffer(current_sensor_data, output, output_size);
 }

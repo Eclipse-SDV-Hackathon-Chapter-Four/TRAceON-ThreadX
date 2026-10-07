@@ -59,8 +59,8 @@ static void send_message(){
     UINT status;
     
     /* Publish a message with QoS Level 1. */
-    char buffer[160] = {0};
-    get_current_telemetry_string(buffer);
+    char buffer[TELEMETRY_BUFFER_SIZE] = {0};
+    get_current_telemetry_string(buffer, sizeof(buffer));
     //printf("%s", buffer);
 
     status = nxd_mqtt_client_publish(&mqtt_client, MQTT_PUBLISH_TOPIC, STRLEN(MQTT_PUBLISH_TOPIC),
