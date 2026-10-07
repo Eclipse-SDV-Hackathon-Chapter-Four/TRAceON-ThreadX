@@ -85,6 +85,53 @@ hand (and would need HIL, e.g. via openDuT).
 - **Impact:** firmware concurrency/networking regressions aren't caught by CI.
 - **Path forward:** on-target smoke tests / HIL in the openDuT cluster.
 
+## Code-review findings (deferred)
+
+From the final code review. These are real but were deliberately **not** fixed
+right before the demo (the fixes carry more risk than the bugs). The two
+high-value fixes from the same review *were* applied: the firmware
+`NX_WAIT_FOREVER` log-publish wait (now bounded) + the OLED-buffer NUL
+off-by-one, and the Java live `mqtt_connected` tracking + non-blocking startup.
+
+### 9. Firmware log ring/queue slot-reuse race under backpressure
+`mqtt_enqueue_log` uses a ring (`log_ring[LOG_RING_DEPTH=8]`) whose depth equals
+the ThreadX queue capacity. The slot copy happens outside the critical section
+and the head advances before the queue send, so under sustained log pressure
+with a blocked/slow MQTT consumer a producer can overwrite a slot that's still
+queued → torn JSON (rather than a clean drop).
+- **Impact:** only triggers with the MQTT thread blocked *and* >8 logs queued;
+  low likelihood in the demo. Worst case is one corrupted log line, not a crash.
+  (The bounded publish-wait fix above makes the "blocked consumer" precondition
+  much less likely.)
+- **Path forward:** track occupancy (head/tail) under `TX_DISABLE` and
+  `log_dropped++` + bail *before* copying when full; have the consumer advance
+  the tail.
+
+### 10. Firmware `current_sensor_data` cross-thread read/write
+The telemetry thread writes `current_sensor_data` (5 floats + 2 `float[3]`)
+non-atomically; the MQTT thread reads it when formatting a telemetry frame. No
+guard.
+- **Impact:** a torn/mixed telemetry frame (stale + fresh), never a crash. Benign
+  for the demo.
+- **Path forward:** double-buffer or copy under a short `TX_DISABLE` / mutex.
+
+### 11. Python forwarder counters are not lock-protected
+`forwarded`/`failed`/`dropped` are plain ints mutated from the worker thread and
+read from the HTTP handler. CPython's GIL makes `+=` effectively atomic so there
+is no memory corruption, but it's technically a race and `status()` can read a
+mixed snapshot. (Java uses `AtomicLong` here — so this is also a minor
+parity/robustness gap.)
+- **Impact:** counters only; negligible.
+- **Path forward:** guard with the forwarder's lock, matching Java.
+
+### 12. `/telemetry/history` timestamp field drifts between servers
+Java history entries expose `received_at_ms` (epoch **milliseconds**); Python
+exposes `received_at` (epoch **seconds**) — different field name *and* unit.
+- **Impact:** a client parsing history timestamps must special-case each server;
+  real contract drift (the live SSE streams and `/health` are unaffected).
+- **Path forward:** pick one name + unit and apply it to both servers (plus
+  update the Java/Python tests and `API.md`).
+
 ---
 
 *None of the above affects the core demo path (board → broker → server →
