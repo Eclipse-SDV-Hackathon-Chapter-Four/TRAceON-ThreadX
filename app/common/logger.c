@@ -95,7 +95,9 @@ void traceon_log(const char* context_id, const char* severity, const char* msg)
     if (n > 0)
     {
         UINT len = (n < (int)sizeof(json)) ? (UINT)n : (UINT)(sizeof(json) - 1);
-        mqtt_publish_log(json, len);
+        /* C1: enqueue for the MQTT thread to publish — never touch the MQTT
+         * client from this (telemetry) thread. */
+        mqtt_enqueue_log(json, len);
     }
 }
 

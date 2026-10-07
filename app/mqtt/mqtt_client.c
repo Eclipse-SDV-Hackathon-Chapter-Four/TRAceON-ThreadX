@@ -45,6 +45,22 @@ static VOID client_disconnect_func(NXD_MQTT_CLIENT *client_ptr)
     printf("client disconnected from broker.\r\n");
 }
 
+/* ------------------------------------------------------------------------
+ * C1: cross-thread log path. Any thread may call mqtt_enqueue_log(), which
+ * copies the JSON into a free ring slot and sends the slot index on log_queue.
+ * ONLY the MQTT thread drains log_queue and calls the (static) publish, so the
+ * NXD_MQTT_CLIENT is never touched concurrently from two threads.
+ * ------------------------------------------------------------------------ */
+#define LOG_RING_DEPTH 8
+#define LOG_SLOT_SIZE  NXD_MQTT_MAX_MESSAGE_LENGTH   /* 320 */
+
+static char      log_ring[LOG_RING_DEPTH][LOG_SLOT_SIZE];
+static UINT      log_ring_len[LOG_RING_DEPTH];
+static ULONG     log_ring_head;            /* next slot to write (producer side) */
+TX_QUEUE         mqtt_log_queue;           /* created in tx_application_define */
+static ULONG     log_queue_storage[LOG_RING_DEPTH];
+static ULONG     log_dropped;
+
 /* Returns TX_TRUE while connected (peeks MQTT_CONNECTED without consuming it). */
 UINT mqtt_is_connected(void)
 {
@@ -54,11 +70,35 @@ UINT mqtt_is_connected(void)
     return (status == TX_SUCCESS) ? TX_TRUE : TX_FALSE;
 }
 
-/* Publish a pre-formatted log JSON payload to MQTT_LOG_TOPIC (QoS1). */
-UINT mqtt_publish_log(const char* json, UINT length)
+/* Producer: copy JSON into a ring slot, enqueue its index, signal the MQTT
+ * thread. Safe from any thread; non-blocking. */
+UINT mqtt_enqueue_log(const char* json, UINT length)
 {
-    /* True no-op if the client isn't connected (prevents publishing on an
-     * uninitialized/disconnected client). */
+    if (json == NULL || length == 0) { return NX_PTR_ERROR; }
+    if (length >= LOG_SLOT_SIZE) { length = LOG_SLOT_SIZE - 1; }
+
+    /* Claim the next slot (interrupts off keeps head advance + copy atomic
+     * w.r.t. other producers; producers are threads, not ISRs). */
+    TX_INTERRUPT_SAVE_AREA
+    TX_DISABLE
+    ULONG slot = log_ring_head;
+    log_ring_head = (log_ring_head + 1) % LOG_RING_DEPTH;
+    TX_RESTORE
+
+    memcpy(log_ring[slot], json, length);
+    log_ring[slot][length] = '\0';
+    log_ring_len[slot] = length;
+
+    UINT status = tx_queue_send(&mqtt_log_queue, &slot, TX_NO_WAIT);
+    if (status != TX_SUCCESS) { log_dropped++; return status; }
+    tx_event_flags_set(&mqtt_app_flag, MQTT_LOG_READY, TX_OR);
+    return TX_SUCCESS;
+}
+
+/* MQTT-thread-internal: publish one pre-formatted log JSON to MQTT_LOG_TOPIC.
+ * Called ONLY from the MQTT thread (via drain), never cross-thread. */
+static UINT mqtt_publish_log(const char* json, UINT length)
+{
     if (mqtt_is_connected() != TX_TRUE)
     {
         return NXD_MQTT_NOT_CONNECTED;
@@ -71,6 +111,27 @@ UINT mqtt_publish_log(const char* json, UINT length)
         printf("Log publish failed with code: %d\r\n", status);
     }
     return status;
+}
+
+/* MQTT-thread-internal: drain all pending log slots and publish them. */
+static void mqtt_drain_log_queue(void)
+{
+    ULONG slot;
+    while (tx_queue_receive(&mqtt_log_queue, &slot, TX_NO_WAIT) == TX_SUCCESS)
+    {
+        if (slot < LOG_RING_DEPTH)
+        {
+            mqtt_publish_log(log_ring[slot], log_ring_len[slot]);
+        }
+    }
+}
+
+/* Create the cross-thread log queue. Called from tx_application_define before
+ * the threads start. */
+void mqtt_client_init(void)
+{
+    tx_queue_create(&mqtt_log_queue, "MQTT log queue", TX_1_ULONG,
+                    log_queue_storage, sizeof(log_queue_storage));
 }
 
 static void send_message(){
@@ -182,10 +243,12 @@ static void mqtt_thread_work(NX_IP *ip_ptr, NX_PACKET_POOL *pool_ptr){
         tx_event_flags_get(&mqtt_app_flag, MQTT_ALL_EVENTS, TX_OR_CLEAR, &events, TX_WAIT_FOREVER);
         if (events & MQTT_RECEIVE_EVENT){
             receive_message();
-
         }
-        else if (events & MQTT_MESSAGE_READY){
+        if (events & MQTT_MESSAGE_READY){
             send_message();
+        }
+        if (events & MQTT_LOG_READY){
+            mqtt_drain_log_queue();   /* only the MQTT thread publishes logs */
         }
     }
 

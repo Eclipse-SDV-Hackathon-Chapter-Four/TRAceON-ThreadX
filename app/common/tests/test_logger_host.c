@@ -11,7 +11,7 @@
  * static helpers) and STUBBING its three hardware dependencies:
  *   - UINT/ULONG typedefs (normally from ThreadX nx_api.h)
  *   - sntp_time_get()      (fake clock)
- *   - mqtt_publish_log()   (captures the JSON instead of publishing)
+ *   - mqtt_enqueue_log()   (captures the JSON instead of publishing)
  *
  * Build + run:  see app/common/tests/run.sh
  *
@@ -33,11 +33,13 @@ typedef unsigned long ULONG;
 static ULONG g_fake_epoch = 0;
 ULONG sntp_time_get(void) { return g_fake_epoch; }
 
-/* Capture the last published JSON instead of sending it over MQTT. */
+/* Capture the last enqueued JSON instead of sending it over MQTT.
+   logger.c now calls mqtt_enqueue_log (C1: cross-thread-safe hand-off to the
+   MQTT thread) rather than publishing directly. */
 static char g_last_json[512];
 static UINT g_last_len;
 static int  g_publish_calls;
-UINT mqtt_publish_log(const char* json, UINT length) {
+UINT mqtt_enqueue_log(const char* json, UINT length) {
     g_publish_calls++;
     g_last_len = length;
     size_t n = length < sizeof(g_last_json) - 1 ? length : sizeof(g_last_json) - 1;
@@ -71,7 +73,7 @@ UINT mqtt_publish_log(const char* json, UINT length) {
 #define NXD_MQTT_CLIENT_H
 /* Declarations logger.c relies on (now that the real headers are shadowed): */
 ULONG sntp_time_get(void);
-UINT mqtt_publish_log(const char* json, UINT length);
+UINT mqtt_enqueue_log(const char* json, UINT length);
 
 /* We include logger.c AFTER the stubs so its static helpers become visible and
    its extern deps resolve to the stubs above. */

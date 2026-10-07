@@ -30,14 +30,20 @@
 
 void mqtt_thread_entry(ULONG thread_input);
 
+/* Create the cross-thread log queue. Call from tx_application_define BEFORE the
+ * threads start (so producers never enqueue onto an uninitialized queue). */
+void mqtt_client_init(void);
+
 /* Returns TX_TRUE while the MQTT client is connected to the broker (tracks the
  * MQTT_CONNECTED event-flag bit). Used to gate publishing. */
 UINT mqtt_is_connected(void);
 
-/* Publish a pre-formatted log JSON payload to the MQTT log topic.
- * Returns NXD_MQTT_SUCCESS on success, or an error code if not connected /
- * the publish fails. */
-UINT mqtt_publish_log(const char* json, UINT length);
+/* Enqueue a pre-formatted log JSON payload for the MQTT thread to publish.
+ * SAFE TO CALL FROM ANY THREAD (C1): it copies into an internal ring slot and
+ * signals the MQTT thread, which is the only thread that touches the MQTT
+ * client. Non-blocking; drops (returns NX_QUEUE_FULL) if the ring is full.
+ * This is what logger.c calls. */
+UINT mqtt_enqueue_log(const char* json, UINT length);
 
 /* Define the symbol for signaling a received message. */
 

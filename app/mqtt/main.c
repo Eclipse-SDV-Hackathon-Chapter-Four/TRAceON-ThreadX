@@ -58,6 +58,9 @@ void tx_application_define(void* first_unused_memory)
      * flags on an uninitialized group (startup race). */
     tx_event_flags_create(&mqtt_app_flag, "MQTT event");
 
+    /* Create the cross-thread MQTT log queue before the threads start (C1). */
+    mqtt_client_init();
+
     // Create Telemetry thread
     UINT status = tx_thread_create(&telemetry_thread,
         "Eclipse ThreadX telemetry Thread",
