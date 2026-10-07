@@ -1,8 +1,10 @@
 # TRAceON — Architecture Overview
 
 A telemetry-and-logging pipeline from an **MXChip AZ3166** IoT DevKit to an
-HTTP server, using **ISO 17978-3 (SOVD)** log/event models and built on
-**Eclipse SDV / Eclipse Foundation** components throughout.
+HTTP server, using **ISO 17978-3 (SOVD)** log/event models and built on Eclipse
+projects throughout — some specifically **Eclipse SDV** (ThreadX, NetX Duo), the
+rest general **Eclipse Foundation** projects. See "Eclipse components — SDV vs
+Foundation" below for the exact breakdown.
 
 ```
    ┌─────────────────────────┐        MQTT          ┌──────────────────┐        HTTP
@@ -136,10 +138,29 @@ snapshots, and (optionally) forwards it.
    on — POSTs each `LogEntry` to a downstream sink.
 4. Commands flow back: `POST /command` → `TRAceON/incoming` → board OLED.
 
-## Eclipse components at a glance
+## Eclipse components — SDV vs Foundation
 
-- **Eclipse ThreadX** — RTOS on the board
-- **Eclipse NetXDuo** — TCP/IP stack + MQTT client (+ TLS) on the board
-- **Eclipse Mosquitto** — MQTT broker
-- **Eclipse Paho** — MQTT client on both servers
-- **Eclipse Jetty** + **Eclipse Yasson** — HTTP server + JSON-B in the Java server
+Not every "Eclipse" project is part of the **Eclipse SDV** working group; some are
+general **Eclipse Foundation** projects. This table is explicit about which is
+which, and about what we actually use today vs. what we align to / plan.
+
+| Component | Eclipse scope | Where / role | Status |
+|---|---|---|---|
+| **Eclipse ThreadX** | **Eclipse SDV** (Real-Time Systems group) | Board RTOS — telemetry/MQTT/app threads | **Used** |
+| **Eclipse NetX Duo** | **Eclipse SDV** (part of the ThreadX project) | Board TCP/IP + MQTT client (+TLS), `nxd_mqtt_client` | **Used** |
+| **Eclipse OpenSOVD** | **Eclipse SDV** | Target for our SOVD-shaped HTTP surface (ISO 17978) | **Aligned to** (not embedded) |
+| **Eclipse openDuT** | **Eclipse SDV** | Planned network-agnostic cross-machine forwarding test | **Planned** (see `OPENDUT-INTEGRATION.md`) |
+| **Eclipse Mosquitto** | Eclipse Foundation (IoT), **not SDV** | MQTT broker (`eclipse-mosquitto:2`, Docker) | **Used** |
+| **Eclipse Paho** | Eclipse Foundation (IoT), **not SDV** | MQTT subscriber in both servers | **Used** |
+| **Eclipse Jetty** | Eclipse Foundation (Jakarta EE), **not SDV** | Embedded HTTP server (Java) | **Used** |
+| **Jersey** (Eclipse EE4J) | Eclipse Foundation (Jakarta EE), **not SDV** | JAX-RS REST + SSE (Java) | **Used** |
+| **Eclipse Yasson** | Eclipse Foundation (Jakarta EE), **not SDV** | JSON-B binding (Java) | **Used** |
+| FastAPI / Uvicorn / Pydantic | **Not Eclipse** | Python server HTTP/SSE/validation | **Used** |
+
+**Honest summary for the elevator pitch:** the components we *actively run* that are
+specifically **Eclipse SDV** are **ThreadX + NetX Duo** (the firmware). The server
+side is built on **Eclipse Foundation** projects (Mosquitto, Paho, and the Jakarta
+stack — Jetty/Jersey/Yasson), which are Eclipse but **not** SDV. Our **Eclipse SDV**
+*reach beyond the firmware* is the **OpenSOVD**-aligned HTTP surface (ISO 17978
+`LogEntry`/`EventEnvelope`, modeled — not yet embedding the reference crate) and the
+planned **openDuT** forwarding-test setup.
