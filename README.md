@@ -39,6 +39,7 @@ Project-specific docs:
 - [TESTING.md](TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
 - [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT (two WSL machines) to make cross-machine forwarding network-agnostic.
 - [BUILD_AND_RUN.md](BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
+- `scripts/build-all.sh` — build all three components (firmware + Java + Python) from one place; `scripts/run-tests.sh` runs all test suites.
 - `scripts/forwarding-demo/` — one-command tmux demos (`start.sh` local, `start-remote.sh` remote).
 
 ## Repository layout

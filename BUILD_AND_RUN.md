@@ -32,6 +32,14 @@
 
 ## 1. Build & flash the AZ3166 firmware
 
+> **Building everything at once?** `./scripts/build-all.sh` builds all three
+> components (firmware + Java + Python) from one place — it delegates the
+> firmware step to `scripts/build.sh`, runs `mvn -B clean package` for the Java
+> server, and `setup.sh` for the Python venv. A component whose toolchain is
+> missing is skipped (not failed), so the servers still build on a machine
+> without the ARM GCC toolchain. Firmware config env vars (below) are forwarded.
+> The rest of this section covers the firmware build on its own.
+
 ### 1.1 Build
 
 ```bash
