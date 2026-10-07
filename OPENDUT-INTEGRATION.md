@@ -1,4 +1,4 @@
-# Plan: Testing TRAceON components with Eclipse openDuT
+# Plan: Testing TRAceON components with Eclipse openDuT (two WSL machines)
 
 **Status:** proposal / next-steps (not yet implemented).
 **Goal:** use Eclipse **openDuT** to give TRAceON a reliable, repeatable,
@@ -7,9 +7,16 @@ two machines** work regardless of the local network, solving the cross-machine
 reachability problems we hit at the venue (AP client isolation, host firewalls,
 NAT) without touching any TRAceON code.
 
-**Assumed topology (decided):** **two native x86_64 Linux machines.** This is the
-simplest, fully-supported setup and avoids every obstacle we ran into on macOS
-and would have hit with WSL2 (see "Why Linux" and the historical note below).
+**Assumed topology (decided):** **two Windows machines, each running WSL2
+(Ubuntu).** This matches the hardware we actually have for the demo. openDuT's
+`EDGAR` agent and the CARL backend run **inside** WSL2 on each machine. WSL2 is
+viable but needs some one-time setup the native-Linux path doesn't — see
+"WSL2 prerequisites (read first)" below, which is the make-or-break section.
+
+> A fully-supported alternative is **two native x86_64 Linux machines** (openDuT's
+> primary supported setup). If the WSL kernel/networking steps below prove too
+> fiddly on the day, fall back to native Linux — the plan is otherwise identical.
+> See the "Native Linux fallback" note.
 
 All CLEO commands below were taken from the openDuT user manual
 (<https://opendut.eclipse.dev/book/>) and the Ethernet usage example. Flags are
@@ -37,55 +44,105 @@ reach each other over the overlay regardless of physical location.
 
 ### Honest caveats for TRAceON
 
-1. **EDGAR is Linux-only and host-side.** The **AZ3166 cannot run EDGAR** (bare-
-   metal ThreadX), so the board is **not** a mesh peer. It keeps publishing to the
-   broker over plain Wi-Fi, exactly as today — openDuT only meshes the two Linux
-   hosts, i.e. the **computer↔computer forward hop**.
-2. **The board → broker hop still rides plain Wi-Fi.** openDuT does not help that
-   leg; it rescues the server → sink forward hop between the two machines.
+1. **EDGAR is Linux-only and host-side** (it runs **inside WSL2** on each Windows
+   machine). openDuT meshes the two WSL hosts — i.e. the
+   **computer↔computer forward hop** between the telemetry server and the sink.
+2. **openDuT only rescues the server → sink forward hop.** It makes that
+   cross-machine leg work regardless of the local network; it does not touch how
+   logs arrive at the telemetry server in the first place.
 3. **Deployment is non-trivial:** CARL brings up Keycloak + NetBird (+ optional
    telemetry) via Docker Compose. A real deployment, best treated as
    post-hackathon work.
 
-### Why two native Linux machines
+### WSL2 prerequisites (read first)
 
-| Concern | macOS (tried) | WSL2 | **Two native Linux** |
+EDGAR needs kernel features the **stock WSL2 kernel does not ship** (WireGuard,
+`ip_gre`, and the nftables/netfilter bits WireGuard routing relies on). On each
+Windows machine you must prepare WSL2 before anything openDuT-related will work:
+
+1. **Custom WSL2 kernel with WireGuard + GRE + netfilter.** The Microsoft default
+   kernel lacks these. Build/install a custom WSL2 kernel that enables
+   `CONFIG_WIREGUARD`, `CONFIG_NET_IPGRE`/`CONFIG_NET_IPGRE_DEMUX`, and the
+   nftables modules, then point `%UserProfile%\\.wslconfig` at it:
+   ```ini
+   [wsl2]
+   kernel=C:\\path\\to\\bzImage-wireguard
+   ```
+   Verify inside WSL after `wsl --shutdown` + restart:
+   ```bash
+   sudo modprobe wireguard && echo "wireguard ok"
+   sudo modprobe ip_gre    && echo "ip_gre ok"
+   ```
+   (Prebuilt custom-kernel recipes exist; see the open-source WSL2 kernel builders.)
+
+2. **Mirrored networking mode** so the two WSL instances get host-routable IPs
+   instead of being double-NATed behind each Windows host:
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   ```
+   Caveat (known issue): WireGuard **between two WSL2 instances with mirrored
+   mode** has reported failures — this is the single biggest risk in the WSL
+   path. Validate host↔host reachability early (Phase 0.5 below) before investing
+   in the full stack.
+
+3. **Windows Defender Firewall** must allow the WSL vEthernet traffic / the CARL
+   ports between the two machines. The openDuT overlay rides WireGuard, but CARL
+   relaying and the initial peer handshake still need the two Windows hosts to
+   reach each other.
+
+4. **systemd in WSL** (for running EDGAR/Docker cleanly):
+   `/etc/wsl.conf` → `[boot]` with `systemd=true`, then `wsl --shutdown`.
+
+### WSL2 vs the alternatives
+
+| Concern | macOS (tried) | **Two WSL2 machines** | Two native Linux (fallback) |
 |---|---|---|---|
-| CARL/Keycloak images (amd64) | **emulated → blocked** | native on Linux | **native ✓** |
-| EDGAR runnable | **no (macOS)** | needs custom kernel | **native ✓** |
-| WireGuard/GRE/netfilter | n/a | WSL2 gaps likely | **stock/available ✓** |
-| Docker mount/network quirks | several | some | **none ✓** |
-| TRAceON code changes | none | none | **none** (forward URL → overlay) |
+| CARL/Keycloak images (amd64) | **emulated → blocked** | native on x86_64 Windows ✓ | native ✓ |
+| EDGAR runnable | **no (macOS)** | yes, with custom kernel ✓ | native ✓ |
+| WireGuard/GRE/netfilter | n/a | **custom WSL2 kernel required** | stock/available ✓ |
+| Host↔host networking | n/a | **mirrored mode (known WG caveat)** | plain LAN ✓ |
+| TRAceON code changes | none | none | none |
 
-The macOS path is a proven dead end (amd64-under-emulation; EDGAR can't run on
-macOS at all — see the historical note at the bottom). WSL2 is viable but needs a
-custom kernel for WireGuard/GRE/netfilter. Two native Linux hosts sidestep all of
-it, and it's openDuT's primary supported setup (their hardware guide uses Linux
-hosts / Raspberry Pis for EDGAR).
+The macOS path is a proven dead end (amd64-under-emulation; EDGAR has no macOS
+build at all — see the historical note at the bottom). **Two WSL2 machines** work
+once the custom kernel + mirrored networking are in place; the WireGuard-between-
+WSL caveat is the thing to de-risk first. **Two native Linux hosts** remain the
+zero-friction fallback if WSL fights back on the day.
+
+### Native Linux fallback
+
+If Phase 0 or 0.5 fails on WSL (custom kernel won't take, or WSL-to-WSL WireGuard
+won't come up under mirrored mode), switch to **two native x86_64 Linux machines**
+and skip the entire "WSL2 prerequisites" section — `wireguard`/`ip_gre` and plain
+LAN reachability are available out of the box. Every Phase from 1 onward is
+identical; only the host labels change (read `wsl-a`/`wsl-b` as your two Linux
+hosts). This is openDuT's primary supported setup (their hardware guide uses
+Linux hosts / Raspberry Pis for EDGAR).
 
 ---
 
 ## Target topology
 
 ```
-   AZ3166 (ThreadX) ── plain Wi-Fi / MQTT (NOT meshed) ──┐
-                                                         ▼
 ┌──────────────────────────────┐  GRE/WireGuard  ┌──────────────────────────────┐
-│ linux-a  (x86_64)             │◀═══ overlay ═══▶│ linux-b  (x86_64)             │
-│  • CARL + Keycloak + NetBird  │                 │  • EDGAR peer "linux-b"       │
+│ wsl-a  (Ubuntu on Windows)    │◀═══ overlay ═══▶│ wsl-b  (Ubuntu on Windows)    │
+│  • CARL + Keycloak + NetBird  │                 │  • EDGAR peer "wsl-b"         │
 │  • Mosquitto broker (1883)    │                 │  • Rust log sink :8080        │
 │  • telemetry server (:8082)   │                 │                               │
-│  • EDGAR peer "linux-a"       │                 └──────────────────────────────┘
+│  • EDGAR peer "wsl-a"         │                 └──────────────────────────────┘
+│  (custom kernel + mirrored)   │
 └──────────────────────────────┘
 ```
 
-- **linux-a** hosts the backend (CARL/Keycloak/NetBird), the broker, the
+- **wsl-a** hosts the backend (CARL/Keycloak/NetBird), the broker, the
   telemetry server, and one EDGAR peer.
-- **linux-b** hosts the second EDGAR peer and the Rust sink.
-- The **AZ3166** publishes to the broker over plain Wi-Fi (unchanged, not meshed).
+- **wsl-b** hosts the second EDGAR peer and the Rust sink.
+- The forward hop **wsl-a → wsl-b** rides the openDuT overlay; the local network
+  between the two Windows machines is irrelevant.
 
 > CARL may instead live on a third host (or cloud VM) both peers can reach;
-> co-locating it on linux-a is just the fewest-moving-parts option. A reachable
+> co-locating it on wsl-a is just the fewest-moving-parts option. A reachable
 > CARL also lets it relay WireGuard when peers have no direct path.
 
 ---
@@ -94,14 +151,31 @@ hosts / Raspberry Pis for EDGAR).
 
 ### Phase 0 — Prerequisites (both machines)
 ```bash
-# Docker + Docker Compose (for CARL, on linux-a).
+# Docker + Docker Compose (for CARL, on wsl-a).
 # EDGAR needs these kernel modules on each machine:
 sudo modprobe wireguard && echo "wireguard ok"
 sudo modprobe ip_gre    && echo "ip_gre ok"
 # can-utils only if you use CAN (we don't): EDGAR setup takes --skip-can
 ```
+> If either `modprobe` fails, your WSL2 kernel is the stock one — go back to
+> "WSL2 prerequisites" and install the custom kernel first. Nothing below works
+> until both load.
 
-### Phase 1 — linux-a: deploy CARL (backend)
+### Phase 0.5 — WSL: prove host↔host WireGuard works (de-risk FIRST)
+Before building the whole openDuT stack, confirm the WSL caveat isn't going to
+bite. Stand up a trivial point-to-point WireGuard tunnel between the two WSL
+instances (mirrored networking) and ping across it:
+```bash
+# wsl-a and wsl-b: wg genkey/pubkey, a minimal wg0 (10.9.0.1 / 10.9.0.2),
+# AllowedIPs, Endpoint = the OTHER Windows host's mirrored IP, then:
+sudo wg-quick up wg0
+ping -c3 10.9.0.2        # from wsl-a  (and 10.9.0.1 from wsl-b)
+```
+If this ping succeeds, the openDuT overlay (same primitives) will too. If it
+fails even with mirrored mode, **switch to the native-Linux fallback now** rather
+than discovering it mid-stack. Tear the test tunnel down (`wg-quick down wg0`).
+
+### Phase 1 — wsl-a: deploy CARL (backend)
 ```bash
 git clone https://github.com/eclipse-opendut/opendut.git && cd opendut
 export OPENDUT_REPO_ROOT=$(git rev-parse --show-toplevel)
@@ -117,8 +191,8 @@ docker compose --file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/docker-compose.yml 
   --env-file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/data/secrets/.env \
   up --detach --build
 ```
-- On native x86_64 the images run natively — **no emulation**, so the Keycloak /
-  CARL-init slowness we hit on the Mac does not occur.
+- On x86_64 Windows the amd64 images run natively **inside WSL2** — no emulation,
+  so the Keycloak / CARL-init slowness we hit on the Mac does not occur.
 - Resolve the `*.opendut.local` domains (real DNS, or `/etc/hosts` → the host IP).
 - Secrets (incl. the CLEO OIDC client secret + the CA at `secrets/pki/`) land in
   `.ci/deploy/localenv/data/secrets/`.
@@ -126,7 +200,7 @@ docker compose --file $OPENDUT_REPO_ROOT/.ci/deploy/localenv/docker-compose.yml 
   proxy build-args: `--build-arg http_proxy= --build-arg https_proxy=
   --build-arg HTTP_PROXY= --build-arg HTTPS_PROXY=` (see historical note).
 
-### Phase 2 — linux-a: configure CLEO
+### Phase 2 — wsl-a: configure CLEO
 ```bash
 export OPENDUT_CLEO_NETWORK_CARL_HOST=opendut.local
 export OPENDUT_CLEO_NETWORK_CARL_PORT=443
@@ -136,10 +210,10 @@ export SSL_CERT_FILE=.../secrets/pki/opendut-ca.pem    # the openDuT CA
 opendut-cleo list peers      # smoke test
 ```
 
-### Phase 3 — linux-a: create the two peers
+### Phase 3 — wsl-a: create the two peers
 ```bash
-opendut-cleo create peer --name linux-a --location lab   # backend + server + sink-source
-opendut-cleo create peer --name linux-b --location lab   # sink host
+opendut-cleo create peer --name wsl-a --location lab   # backend + server + sink-source
+opendut-cleo create peer --name wsl-b --location lab   # sink host
 opendut-cleo list peers      # note the two PeerIDs: <A_ID>, <B_ID>
 ```
 
@@ -161,12 +235,12 @@ opendut-cleo generate-setup-string --id <B_ID>   # -> SETUP_B
 Download EDGAR from LEA → Downloads, then on each machine run the managed setup
 with that host's string:
 ```bash
-sudo ./opendut-edgar setup managed --skip-can     # paste SETUP_A on linux-a, SETUP_B on linux-b
+sudo ./opendut-edgar setup managed --skip-can     # paste SETUP_A on wsl-a, SETUP_B on wsl-b
 ip link        # verify wt0 (WireGuard) + br-opendut appear
 sudo wg        # verify the WireGuard peer link
 ```
 
-### Phase 6 — create + deploy the cluster (on linux-a)
+### Phase 6 — create + deploy the cluster (on wsl-a)
 ```bash
 opendut-cleo create cluster-configuration --name traceon \
     --leader-id <A_ID> --peer-ids <A_ID>,<B_ID>      # confirm exact flags via --help
@@ -182,28 +256,27 @@ Deploying establishes the GRE-over-WireGuard links between the two EDGARs.
 ### Phase 7 — read overlay IPs + pre-flight
 ```bash
 # on each machine:
-ip address show br-opendut      # or: ip address show wt0   -> note linux-b's overlay IP
-# from linux-a, before enabling forwarding (same discipline as TESTING-LOG-FORWARDING.md):
-nc -vz -w 3 <overlay-linux-b> 8080                 # must say "succeeded!"
-route -n get <overlay-linux-b> | grep interface    # must be the openDuT iface, not a VPN
+ip address show br-opendut      # or: ip address show wt0   -> note wsl-b's overlay IP
+# from wsl-a, before enabling forwarding (same discipline as TESTING-LOG-FORWARDING.md):
+nc -vz -w 3 <overlay-wsl-b> 8080                 # must say "succeeded!"
+route -n get <overlay-wsl-b> | grep interface    # must be the openDuT iface, not a VPN
 ```
 
 ### Phase 8 — point forwarding at the overlay IP
-**Only runtime config changes — no firmware/server code change.**
+**Only runtime config changes — no server code change.**
 ```bash
-# linux-b: start the Rust sink on 0.0.0.0:8080 (reachable over the overlay)
-# linux-a: start the telemetry server, then:
+# wsl-b: start the Rust sink on 0.0.0.0:8080 (reachable over the overlay)
+# wsl-a: start the telemetry server, then:
 curl -s -X POST localhost:8082/logs/forwarding/start \
      -H 'content-type: application/json' \
-     -d '{"url":"http://<overlay-linux-b>:8080/internal/logs"}'
+     -d '{"url":"http://<overlay-wsl-b>:8080/internal/logs"}'
 ```
 or bake it in at launch:
-`TRACEON_LOG_FORWARD_URL=http://<overlay-linux-b>:8080/internal/logs`.
+`TRACEON_LOG_FORWARD_URL=http://<overlay-wsl-b>:8080/internal/logs`.
 
-Data path: **AZ3166 → linux-a broker (Wi-Fi) → telemetry server → POST over the
-openDuT overlay → Rust sink on linux-b.** The local LAN between the two Linux
-boxes is irrelevant — openDuT tunnels it, so AP isolation / host firewalls / NAT
-don't matter.
+Data path: **telemetry server (wsl-a) → POST over the openDuT overlay → Rust sink
+on wsl-b.** The local network between the two Windows machines is irrelevant —
+openDuT tunnels it, so AP isolation / host firewalls / NAT don't matter.
 
 ---
 
@@ -218,7 +291,7 @@ opendut-cleo create container-executor \
     --name traceon-forward-check --image <our-test-image> \
     --results-url http://nginx-webdav.opendut.local/
 ```
-The test container would: run the sink, trigger log emission (board or
+The test container would: run the sink, trigger log emission (e.g.
 `send-log.sh`), assert the sink received the expected ISO LogEntries with the
 right DLT severities, then write results. Deploying the cluster triggers it.
 
@@ -228,24 +301,29 @@ right DLT severities, then write results. Deploying the cluster triggers it.
 
 | Piece | Change for openDuT? |
 |---|---|
-| AZ3166 firmware | **None** — plain Wi-Fi/MQTT to the broker |
 | Mosquitto broker | None |
 | Telemetry server (Py/Java) code | **None** |
 | Rust sink code | None |
-| **Forward URL** | `192.168.x` → **overlay IP of linux-b** (only functional change) |
-| New infra | CARL+Keycloak+NetBird on linux-a; EDGAR on both Linux hosts |
+| **Forward URL** | `192.168.x` → **overlay IP of wsl-b** (only functional change) |
+| New infra | CARL+Keycloak+NetBird on wsl-a; EDGAR in both WSL instances |
 
 ## Open items to validate early
-- **Kernel modules** on both hosts: `wireguard`, `ip_gre` load (Phase 0).
+- **WSL2 custom kernel** on both machines: `wireguard` + `ip_gre` must `modprobe`
+  (Phase 0). Stock WSL2 kernels fail here.
+- **Host↔host WireGuard under mirrored networking** (Phase 0.5): the known
+  WSL-to-WSL WireGuard caveat is the top risk — prove it before building the
+  stack, or fall back to native Linux.
+- **Windows Firewall** between the two machines (CARL ports + the WireGuard
+  endpoint port).
 - **Exact CLEO flag names** (`--peer-ids` / `--leader-id` / cluster subcommand
   spelling) — confirm with `--help` on the installed version.
-- **CARL reachability**: both EDGARs must reach CARL; if the two Linux hosts are
-  on different networks, host CARL somewhere both can reach (it can also relay the
+- **CARL reachability**: both EDGARs must reach CARL; if the two machines are on
+  different networks, host CARL somewhere both can reach (it can also relay the
   WireGuard tunnel).
 
 ---
 
-## Historical note — the macOS attempt (2026-10-07, why we chose Linux)
+## Historical note — the macOS attempt (2026-10-07, why we moved off macOS)
 
 We first tried a **Mac-only** bring-up of the CARL backend (Apple Silicon, arm64).
 It is recorded here because the fixes are reusable and the blocker is the reason
@@ -273,7 +351,7 @@ on arm64 they run under **QEMU emulation**. Emulated **Keycloak was far too slow
 (**"Waiting for https://auth.opendut.local/…"**) timed out (~6 s) and CARL never
 became `healthy`. This is an architecture/emulation wall, not a config bug — and
 separately, **EDGAR has no macOS build at all**, so the Mac could never host a
-mesh peer regardless. Hence: **two native x86_64 Linux machines.**
+mesh peer regardless. Hence we target **two WSL2 machines**, with native Linux as the fallback.
 
 **Teardown used:** `docker compose … down --remove-orphans` (our `traceon-broker`
 is a separate stack and was unaffected).

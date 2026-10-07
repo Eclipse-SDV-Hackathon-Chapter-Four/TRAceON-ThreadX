@@ -37,7 +37,7 @@ Project-specific docs:
 - [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
 - [TESTING-LOG-FORWARDING.md](TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
 - [TESTING.md](TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
-- [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT to make cross-machine forwarding network-agnostic.
+- [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT (two WSL machines) to make cross-machine forwarding network-agnostic.
 - [BUILD_AND_RUN.md](BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
 - `scripts/forwarding-demo/` — one-command tmux demos (`start.sh` local, `start-remote.sh` remote).
 

@@ -61,8 +61,10 @@ WireGuard mesh and records a **proven blocker**: the openDuT `localenv` images
 are amd64-only and run too slowly under emulation on Apple Silicon (Keycloak
 times out CARL's init). EDGAR also cannot run on macOS at all.
 - **Impact:** not demonstrated end-to-end; it's a design + findings doc.
-- **Path forward:** two native x86_64 Linux hosts (the documented "happy path");
-  only the forward URL changes to the overlay IP — no TRAceON code change.
+- **Path forward:** two WSL2 machines (the documented plan; needs a custom WSL
+  kernel + mirrored networking), or two native x86_64 Linux hosts as the
+  zero-friction fallback. Either way only the forward URL changes to the overlay
+  IP — no TRAceON code change.
 
 ### 7. openDuT / server deployment assumes a trusted single network
 The servers find the broker by configured host (`TRACEON_MQTT_HOST`, default
