@@ -216,28 +216,60 @@ If the Mac's IP changes, update `MQTT_LOCAL_BROKER_IP` and rebuild+flash.
 
 ### Build-time overrides (no file edit needed)
 
-The WiFi SSID/password, broker IP, and client name can be set **at build time**
-via environment variables, so you don't have to edit `cloud_config.h` for every
-network. They override the defaults above (which remain the fallback):
+The WiFi SSID/password, broker IP, and MQTT client name can be set **at build
+time** via environment variables, so you don't edit `cloud_config.h` per network.
+Each overrides the matching `#ifndef` default in `cloud_config.h`; any variable
+you omit falls back to that default.
+
+**Every build-time variable:**
+
+| Env var | Overrides (`cloud_config.h`) | Default | Format | Notes |
+|---|---|---|---|---|
+| `WIFI_SSID` | `WIFI_SSID` | `Hackathon-Team-11` | string | 2.4 GHz networks only (board limitation) |
+| `WIFI_PASSWORD` | `WIFI_PASSWORD` | `SDVTeam-123456` | string | kept out of git when passed this way |
+| `BROKER_IP` | `MQTT_LOCAL_BROKER_IP` | `192.168.88.254` | dotted IPv4 `a.b.c.d` | split into octets for `IP_ADDRESS(...)`; must be 4 octets |
+| `MQTT_CLIENT_NAME` | `MQTT_CLIENT_NAME` | `TRAceON` | string | also drives topic names (`<name>/sensor-data`, `/logs`, `/incoming`) |
+
+**Positional argument** (not an env var): the first argument to `build.sh` is the
+app config — only `mqtt` exists (and is the default). Second arg: `clean` or
+`rebuild`.
+
+**NOT overridable at build time** (edit `cloud_config.h` directly if you need to
+change them): `HOSTNAME` and `WIFI_MODE` (defaults `eclipse-threadx` /
+`WPA2_PSK_AES`).
+
+**Fully-explicit example — all four variables, from the repo root:**
 
 ```bash
+export ARM_GCC_PATH=/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin
+
 WIFI_SSID='MyNetwork' \
 WIFI_PASSWORD='mypassword' \
-BROKER_IP=192.168.1.50 \
+BROKER_IP='192.168.1.50' \
 MQTT_CLIENT_NAME='TRAceON' \
-  ./scripts/build.sh mqtt clean      # 'clean' is REQUIRED after changing these
-./scripts/deploy.sh
+  ./scripts/build.sh mqtt clean
+
+./scripts/deploy.sh            # copies build/app/mxchip_threadx.bin to /Volumes/AZ3166
 ```
 
-- Any omitted variable keeps the `cloud_config.h` default.
-- `BROKER_IP` is dotted IPv4 (`a.b.c.d`); it's split into octets for
-  `IP_ADDRESS(...)`.
-- These apply at **CMake configure** time, so you must pass `clean` (or
-  `rebuild`) after changing them — an incremental build won't re-read them.
-- Mechanism: `build.sh` forwards the vars as `-D` to CMake →
-  `target_compile_definitions` → `#ifndef` guards in `cloud_config.h`.
-- Keeps real credentials **out of git** (they live only on your build command,
-  not in the committed source).
+Minimal example — just the two things that usually change per venue (WiFi +
+broker), everything else default:
+
+```bash
+WIFI_SSID='MyNetwork' WIFI_PASSWORD='mypassword' BROKER_IP='192.168.1.50' \
+  ./scripts/build.sh mqtt clean
+```
+
+**Important:**
+- **`clean` (or `rebuild`) is REQUIRED** after changing any of these — they are
+  applied at CMake **configure** time, so a plain incremental build does not
+  re-read them. Omitting `clean` silently keeps the previous values.
+- Mechanism: `build.sh` forwards each set variable as `-D` to CMake →
+  `target_compile_definitions` on the firmware target → the `#ifndef` guards in
+  `cloud_config.h`. You can confirm what got baked in with:
+  `strings build/app/mxchip_threadx.elf | grep -E 'MyNetwork|<your-ssid>'`.
+- Credentials passed this way live only on your build command line, **not** in
+  committed source.
 
 ---
 
