@@ -18,7 +18,7 @@ Or run a single suite directly:
 |---|---|---|---|
 | Python server | 39 | pytest | `cd telemetry-server && ./setup.sh && . .venv/bin/activate && pip install -r requirements-dev.txt && pytest` |
 | Java server | 24 | JUnit 5 | `cd telemetry-server-java && mvn -B test` |
-| Firmware (pure logic) | 13 | custom host harness | `./app/common/tests/run.sh` |
+| Firmware (pure logic) | 12 | custom host harness | `./app/common/tests/run.sh` |
 
 ---
 
@@ -65,6 +65,10 @@ Covered (`src/test/java/org/traceon/`):
 - `EnvelopeJsonTest` — `EventEnvelope.wrap` shape + Yasson (`Json`) round-trip.
 - `QueryTest` — `clampLimit`, `parseIso8601Millis` (`Z` + offset + malformed),
   `inRange`.
+- `SseRegistryTest` — slow-client isolation: a stuck subscriber doesn't stall a
+  fast one, and `publish()` stays non-blocking under a flood (bounded
+  drop-oldest queue). `@Timeout(SEPARATE_THREAD)` makes a regression fail cleanly
+  instead of hanging.
 
 ## Firmware pure logic (`app/common/tests/`)
 
@@ -73,13 +77,13 @@ run on the host as a whole. These tests cover **only the hardware-free logic** i
 `logger.c`, host-compiled with stubs for the hardware dependencies.
 
 ```bash
-./app/common/tests/run.sh               # -> ALL PASSED (13 checks)
+./app/common/tests/run.sh               # -> ALL PASSED (12 checks)
 ```
 
 How it works: `test_logger_host.c` `#include`s `logger.c` directly (to reach its
 `static` helpers), pre-empts the real `sntp_client.h` / `mqtt_client.h`
 (which pull in ThreadX/NetXDuo) by defining their include guards, and stubs
-`sntp_time_get()` (fake clock) and `mqtt_publish_log()` (captures the JSON).
+`sntp_time_get()` (fake clock) and `mqtt_enqueue_log()` (captures the JSON).
 
 Covered:
 - `epoch_to_iso8601` — civil-date conversion (known value, epoch 0, leap day).

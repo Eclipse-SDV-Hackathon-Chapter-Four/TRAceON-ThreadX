@@ -63,7 +63,7 @@ image. Override any setting with `-e`, e.g. `-e TRACEON_HTTP_PORT=9090`.
 | `TRACEON_MQTT_PORT`     | `1883`               | Broker port                    |
 | `TRACEON_SENSOR_TOPIC`  | `TRAceON/sensor-data`| Topic to subscribe (telemetry) |
 | `TRACEON_LOG_TOPIC`     | `TRAceON/logs`       | Topic to subscribe (board logs) |
-| `TRACEON_LOG_BUFFER_SIZE`| `200`               | Recent log entries kept in memory |
+| `TRACEON_LOG_BUFFER_SIZE`| `100`               | Recent log entries kept in memory |
 | `TRACEON_COMMAND_TOPIC` | `TRAceON/incoming`   | Topic to publish (commands)    |
 | `TRACEON_COMPONENT`     | `TRAceON`            | SOVD component/entity name     |
 | `TRACEON_HTTP_HOST`     | `0.0.0.0`            | HTTP bind host                 |

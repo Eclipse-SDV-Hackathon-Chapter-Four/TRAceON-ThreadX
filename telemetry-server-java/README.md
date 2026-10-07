@@ -127,7 +127,9 @@ src/main/java/org/traceon/
   SseRegistry.java       thread-safe SSE writer registry (telemetry/logs channels)
   SseServlet.java        plain async Jakarta servlet for the two SSE streams
   DashboardServlet.java  serves the live SSE dashboard HTML at /dashboard
-  TelemetryResource.java JAX-RS: /health, /telemetry/latest(/{field}), POST /command, /logs
+  TelemetryResource.java JAX-RS: /health, /telemetry/latest(/{field}), POST /command
+  HistoryResource.java   JAX-RS: /telemetry/history, /logs/history (query params)
+  LogControlResource.java JAX-RS: /logs/forwarding (status, start, stop)
   SovdResource.java      JAX-RS: /components/{component}/data(/{resourceId})
   TelemetryServer.java   main: Jetty + Jersey + JSON-B + SSE servlets wiring
 ```
