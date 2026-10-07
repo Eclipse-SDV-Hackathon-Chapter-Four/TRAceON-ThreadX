@@ -36,8 +36,10 @@ RTOS; everything is cooperative tasks on **ThreadX**.
 **Application firmware (our code, in `app/`):**
 - `app/mqtt/telemetry.c` — reads the on-board sensors (temperature, humidity,
   pressure, accelerometer, magnetometer) and publishes readings to
-  `TRAceON/sensor-data` each cycle. Also emits plausibility-check warnings and a
-  (temporary) heartbeat log.
+  `TRAceON/sensor-data` each cycle. Also emits plausibility-check warnings and,
+  in **DEMO_LOGS mode** (on by default; see `telemetry.h`), a varied stream of
+  log entries (~1/sec, cycling all DLT severities and several contexts) to
+  exercise the log path.
 - `app/common/logger.{c,h}` — the **ISO 17978-3 logger**. `traceon_log(context,
   severity, msg)` (+ `_info/_warn/_error/...` wrappers) formats an ISO `LogEntry`
   JSON — ISO-8601 timestamp from SNTP, `context.type = "AUTOSAR_DLT"`, DLT

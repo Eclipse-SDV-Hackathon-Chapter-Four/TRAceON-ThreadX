@@ -40,7 +40,8 @@ cd ~/repos/IEH/TRAceON-ThreadX
 ./scripts/build.sh <app> [clean|rebuild]
 ```
 
-- `<app>` is one of: `starter`, `telemetry`, `mqtt`, `arcade` (default: `starter`).
+- `<app>` is `mqtt` (the only app config; the default). The upstream sample's
+  `starter`/`telemetry`/`arcade` configs were removed — see the README.
 - The toolchain is found via `ARM_GCC_PATH` (checked first) or `arm-none-eabi-gcc` on PATH.
   If neither is set, CMake aborts with "Unable to find ARM GCC".
 - Output: `build/app/mxchip_threadx.{elf,bin,hex}`. Release build, `-Os -flto`.
@@ -139,7 +140,7 @@ Move/breathe on the board to force a change if it looks idle.
 ```bash
 mosquitto_pub -h localhost -t 'TRAceON/incoming' -m 'Hello Team 11'
 ```
-Shows `Message:` + the text wrapped across the OLED (see `screen_print_wrapped()`
+Shows `TRAceON:` + the text wrapped across the OLED (see `screen_print_wrapped()`
 in `app/common/screen.c`, called from `receive_message()` in `app/mqtt/mqtt_client.c`).
 Display fits ~11 chars/line × 3 body lines ≈ 33 chars; longer text is truncated on
 screen (full text still goes to the serial console).

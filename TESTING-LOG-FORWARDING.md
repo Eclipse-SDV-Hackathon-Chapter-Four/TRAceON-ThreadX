@@ -64,7 +64,7 @@ curl -s -X POST localhost:8083/logs/forwarding/start ; echo
 # Make a log appear — either:
 #  (a) send one manually (NOTE: run from the project dir, or use the full path):
 ./scripts/send-log.sh DLT_WARN SensorTask "hello from local test"
-#  (b) or just wait for the board's heartbeat (every ~5 s) if it is connected.
+#  (b) or just wait for the board's demo log stream (~1/sec) if it is connected.
 
 # Watch the counter rise (forwarded increments per log):
 curl -s localhost:8083/logs/forwarding ; echo
@@ -120,7 +120,7 @@ TRACEON_LOG_FORWARD_URL=http://192.168.88.252:8080/logs \
 ./run.sh
 ```
 
-Then make logs flow (board heartbeat, or `./scripts/send-log.sh ...`) and watch the
+Then make logs flow (the board's demo log stream, or `./scripts/send-log.sh ...`) and watch the
 other device print the forwarded entries. Confirm on the server side:
 ```bash
 curl -s localhost:8083/logs/forwarding ; echo   # forwarded rising, failed 0
@@ -201,8 +201,10 @@ Forwarded body = the ISO `LogEntry`:
   (`cd ~/repos/IEH/TRAceON-ThreadX`) or use the full path.
 - **`start` returns 400** → no URL configured; pass `{"url":"..."}` in the body or
   set `TRACEON_LOG_FORWARD_URL` before launching the server.
-- **Board stopped sending** → its MQTT may have dropped (`Publish failed with code:
-  65538` = NOT_CONNECTED on the serial console); press RESET to reconnect.
+- **Board stopped sending** → its MQTT connection dropped (`Publish failed with
+  code: 65538` = NOT_CONNECTED on the serial console). The firmware now
+  **auto-reconnects** (bounded backoff) once the broker is reachable again, so
+  this should recover on its own; a RESET only speeds it up.
 - **`failed` rises with `<urlopen error timed out>`** → the sink host accepted no
   response. `ping` is NOT a valid test here (ICMP is often blocked); use
   `nc -vz <sink-host> 8080`. If `nc` also times out *even with the sink's firewall

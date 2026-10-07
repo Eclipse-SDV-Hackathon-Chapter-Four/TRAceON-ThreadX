@@ -30,7 +30,7 @@ Broker is Eclipse Mosquitto → the whole path is Eclipse.
 cd ~/repos/IEH/TRAceON-ThreadX/telemetry-server-java
 export JAVA_HOME="$(/usr/libexec/java_home 2>/dev/null || echo /opt/homebrew/opt/openjdk)"
 mvn clean package
-java -jar target/telemetry-telemetry-server-java-jar-with-dependencies.jar
+java -jar target/telemetry-server-java-jar-with-dependencies.jar
 ```
 
 Server listens on **:8082** (the Python server uses 8083, so both can run at once).
