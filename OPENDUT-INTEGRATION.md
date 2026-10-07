@@ -228,3 +228,195 @@ right DLT severities, then write results. Deploying the cluster triggers it.
   spelling) — confirm with `--help` on the installed version.
 - **CARL reachability**: both EDGARs must reach CARL; a cloud-hosted CARL avoids
   the same NAT problems we're trying to escape.
+
+
+---
+
+## Local attempt findings (2026-10-07, macOS arm64, Mac-only)
+
+We attempted a Mac-only bring-up of the **CARL backend** via the `localenv`
+Docker Compose stack (Windows/WSL not in play yet, so EDGAR/mesh was explicitly
+out of scope — the goal was just to stand up and explore the control plane).
+
+**What worked:**
+- Cloned `eclipse-opendut/opendut`; cargo 1.97 + Docker 29 + Compose v5 present.
+- `provision-secrets` and the full image build succeeded **once the injected
+  Docker proxy was neutralized** — same issue as our own images. Pass empty
+  proxy build-args/env:
+  `--build-arg http_proxy= --build-arg https_proxy= ... NO_PROXY='*'`.
+  Without this, `apt-get` in the builds fails with "Unable to locate package".
+- Added the nine `*.opendut.local` entries to `/etc/hosts` → `127.0.0.1`.
+- Core services came up and reported healthy: **traefik, keycloak,
+  keycloak-postgres, netbird-signal, netbird-relay**; `keycloak-init` completed
+  ("Keycloak provisioned", realm/clients/roles created). Traefik correctly
+  routed `auth.opendut.local` → the keycloak container.
+
+**Fixes we had to apply for Docker Desktop on Mac:**
+1. **Proxy** — empty proxy build-args (above).
+2. **Lean subset** — `OPENDUT_LOCALENV_TELEMETRY_ENABLED=0` scales the Grafana/
+   Prometheus/Loki/Tempo/Alloy/otel services to 0, BUT `grafana` still
+   `depends_on: loki`, so `up` fails with "grafana is missing dependency loki".
+   Workaround: start the core services **explicitly by name** with `--no-deps`
+   (keycloak-postgres, keycloak, init_keycloak, traefik, netbird-signal,
+   netbird-management, netbird-relay, carl, nginx-webdav).
+3. **Cert bind mount** — the compose binds host path `/provision`
+   (`SHARED_CERTS_HOST_DIR=/provision`) which doesn't exist / isn't shared on
+   Docker Desktop for Mac → "mounts denied: path /provision is not shared".
+   Workaround: override `SHARED_CERTS_HOST_DIR` to the real host PKI dir
+   (`.ci/deploy/localenv/data/secrets/pki`, which is under the repo and already
+   in Docker's shared file space).
+
+**The blocker (why we stopped):**
+- The localenv images (CARL, Keycloak, …) are **`linux/amd64` only**; the host
+  is **arm64**, so they run under **QEMU emulation** (Docker logged the
+  platform-mismatch warning for `opendut-carl`).
+- Under emulation, **Keycloak responds far too slowly** — traefik logged ~3 s
+  per request with `DownstreamStatus 499` (client gave up). CARL's init script
+  loops on **"Waiting for https://auth.opendut.local/ to be available…"** and
+  never gets past it, because its probe times out (~6 s) against the slow
+  emulated Keycloak. CARL therefore never reaches `healthy`.
+- This is an **architecture/emulation performance wall**, not a config bug.
+  Raising CARL's init timeout might eventually let it settle, but the stack is
+  likely to stay slow/flaky under emulation.
+
+**Conclusion / recommendation:**
+- openDuT's localenv is **not practically runnable on this Apple-Silicon Mac**
+  with the published amd64 images. Defer the real bring-up to an **x86_64 Linux
+  host** (or the Windows box via a Linux VM / WSL) where the images run natively
+  and EDGAR's privileged networking (WireGuard/GRE/bridges) is also available —
+  recall **EDGAR cannot run on macOS at all**, so the Mac was only ever viable
+  for the control plane, not the mesh.
+- Net: the three Docker-Desktop-on-Mac fixes above are reusable, but the whole
+  effort should move to x86_64 Linux. The TRAceON side needs no code changes
+  regardless — only the forward URL points at the overlay IP (see table above).
+
+**Teardown:** `docker compose … down --remove-orphans` removes everything; our
+`traceon-broker` is on a separate stack and is unaffected.
+
+
+---
+
+## Appendix: Linux host + WSL-on-Windows topology
+
+A cleaner target than the Mac-only attempt above: a **native x86_64 Linux
+machine** as one peer and **WSL2 on the Windows machine** as the other. This is
+the recommended way to get a *working* mesh, because it removes the two walls we
+hit on the Mac:
+
+- **No emulation:** on x86_64 Linux the openDuT amd64 images (CARL, Keycloak, …)
+  run **natively** — the Keycloak-too-slow / CARL-init-timeout blocker goes away.
+- **Native EDGAR:** EDGAR runs natively on Linux (no VM), with real access to
+  WireGuard / GRE / `br-opendut`.
+
+### Roles
+
+```
+   AZ3166 (ThreadX) ── plain Wi-Fi / MQTT (NOT meshed) ──┐
+                                                         ▼
+┌──────────────────────────────┐  GRE/WireGuard  ┌──────────────────────────────┐
+│ Linux box (x86_64)            │◀═══ overlay ═══▶│ Windows: WSL2 (Ubuntu)        │
+│  • CARL + Keycloak + NetBird  │                 │  • EDGAR peer "wsl-sink"      │
+│    (localenv, native amd64)   │                 │  • Rust log sink :8080        │
+│  • Mosquitto broker           │                 │                               │
+│  • telemetry server (fwd) ────┼──▶ http://<overlay-wsl>:8080/internal/logs      │
+│  • EDGAR peer "linux-host"    │                 └──────────────────────────────┘
+└──────────────────────────────┘
+```
+
+Who hosts what:
+- The **Linux box** runs the CARL backend (`localenv`), the broker, the telemetry
+  server, **and** its own EDGAR peer. Simplest: one machine owns the backend +
+  one peer.
+- **WSL2** runs the second EDGAR peer and the Rust sink.
+- The **AZ3166** stays on plain Wi-Fi → the broker (unchanged; never meshed).
+
+### Linux box — steps
+
+1. **CARL backend** — same `localenv` Docker Compose as the main plan, but on
+   x86_64 the images run natively (no emulation). Apply only the proxy fix if
+   you're behind the same corporate proxy; the `/provision` mount and
+   `grafana→loki` issues were **Docker-Desktop-on-Mac** artifacts and should not
+   occur on native Linux Docker. Add `*.opendut.local` to `/etc/hosts` (or real
+   DNS).
+2. **CLEO** — configure against CARL (`OPENDUT_CLEO_NETWORK_CARL_HOST` + OIDC
+   client secret from `secrets/.env`), then create peers:
+   ```bash
+   opendut-cleo create peer --name linux-host --location lab
+   opendut-cleo create peer --name wsl-sink   --location lab
+   opendut-cleo create network-interface --peer-id <LINUX_ID> --type eth --name eth0
+   opendut-cleo create network-interface --peer-id <WSL_ID>   --type eth --name eth0
+   opendut-cleo generate-setup-string --id <LINUX_ID>
+   opendut-cleo generate-setup-string --id <WSL_ID>
+   ```
+3. **EDGAR (native)** — download EDGAR from LEA, then:
+   ```bash
+   sudo ./opendut-edgar setup managed --skip-can   # paste the linux-host setup-string
+   ip link        # verify wt0 (WireGuard) + br-opendut appear
+   ```
+
+### WSL2 (Windows) — steps + the real caveats
+
+WSL2 runs a full Linux kernel, so EDGAR *can* run there — **but the stock
+Microsoft WSL2 kernel is missing pieces that WireGuard/NetBird and GRE need**
+(certain nftables/iptables features and `ip_gre` are often not compiled in).
+Expect to validate — and possibly rebuild — the kernel. Validate in this order:
+
+1. **systemd in WSL** — EDGAR installs as a systemd service. Enable it:
+   `/etc/wsl.conf` →
+   ```ini
+   [boot]
+   systemd=true
+   ```
+   then `wsl --shutdown` from Windows and reopen. Confirm `systemctl` works.
+2. **Kernel modules** — check WireGuard + GRE are available:
+   ```bash
+   modprobe wireguard && echo "wireguard ok"
+   modprobe ip_gre && echo "ip_gre ok"
+   zcat /proc/config.gz | grep -iE 'WIREGUARD|NF_TABLES|IP_GRE'   # if config present
+   ```
+   If these fail, you need a **custom WSL2 kernel** with WireGuard/GRE/netfilter
+   enabled (well-trodden but non-trivial — several community kernels exist),
+   configured via `.wslconfig` → `[wsl2] kernel=<path-to-bzImage>`.
+3. **Mirrored networking (recommended)** — so the WSL peer is reachable on the
+   Windows host's network without NAT gymnastics. In `%UserProfile%\.wslconfig`:
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   ```
+   then `wsl --shutdown`.
+4. **EDGAR** — run as root (the container/service model needs it):
+   ```bash
+   sudo ./opendut-edgar setup managed --skip-can   # paste the wsl-sink setup-string
+   ```
+5. **Rust sink** — run it in WSL on `0.0.0.0:8080` (now reachable via the overlay
+   from the Linux box, independent of the Windows firewall / AP).
+
+### Cluster + forwarding (same as the main plan)
+
+```bash
+opendut-cleo create cluster-configuration --name traceon --leader-id <LINUX_ID> \
+    --peer-ids <LINUX_ID>,<WSL_ID>
+opendut-cleo create cluster-deployment --id <CLUSTER_ID>
+# read the WSL peer's overlay IP (on br-opendut / wt0), then:
+curl -s -X POST localhost:8082/logs/forwarding/start \
+     -H 'content-type: application/json' \
+     -d '{"url":"http://<overlay-wsl>:8080/internal/logs"}'
+```
+
+Pre-flight the overlay before enabling forwarding (same discipline as
+TESTING-LOG-FORWARDING.md): `nc -vz <overlay-wsl> 8080` must succeed, and
+`route -n get <overlay-wsl>` should go via the openDuT interface — not a VPN.
+
+### Honest status of this appendix
+
+- The **Linux-box side is high-confidence**: native amd64 removes the emulation
+  blocker we proved on the Mac, and native EDGAR is openDuT's primary supported
+  setup.
+- The **WSL2 side is the risk**: EDGAR-in-WSL2 is *not* plug-and-play — the stock
+  kernel's missing WireGuard/GRE/netfilter support is the likely sticking point
+  (community reports consistently point to building a custom WSL2 kernel).
+  Validate steps 1–2 **before** committing to this path; if WSL2 fights it, use
+  a **second native Linux host** (or a Linux VM on the Windows box with proper
+  networking) as the sink peer instead.
+- None of this changes TRAceON code — only the forward URL points at the overlay
+  IP, exactly as in the main plan.
