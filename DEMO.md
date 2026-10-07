@@ -10,6 +10,47 @@ and shows a live dashboard; you send a command that appears on the board's OLED.
 
 ---
 
+## ⚡ Demo-day triage (read this first)
+
+If something's wrong in front of the audience, go here before scrolling. Most
+demo-day failures are **environmental** (the network), not the code.
+
+1. **Nothing on the dashboard?** First decide *which leg* is broken:
+   ```bash
+   curl -s localhost:8082/health
+   ```
+   - `mqtt_connected:false` → the **server↔broker** leg. Is the broker up?
+     `docker ps --filter name=traceon-broker` (step 1).
+   - `mqtt_connected:true, has_data:false` → broker's fine, the **board isn't
+     publishing**. Go to item 2.
+   - `has_data:true` → data *is* flowing; the problem is the **browser/dashboard**
+     — hard-refresh `http://localhost:8082/dashboard`.
+
+2. **Board not publishing?** The usual culprits, in order of likelihood:
+   - **Mac IP changed** (new network, DHCP lease): `ipconfig getifaddr en0` and
+     compare to what you flashed. If different → **re-run step 0** (reflash).
+   - **Captive portal / guest-login Wi-Fi** → the board physically cannot join.
+     Switch to a **2.4 GHz phone hotspot** with no portal, reflash for it.
+   - **Not 2.4 GHz** → the board is 2.4 GHz only.
+   - Give it **~20 s** after any reset (Wi-Fi → DHCP → SNTP → MQTT). The firmware
+     auto-reconnects — once the network is right it recovers on its own, no reset
+     needed.
+
+3. **Can't fix the board in time?** Fall back to the **mock publisher** — the
+   server + dashboard story demos fully without the board (see "Fallback" below).
+   `./scripts/mock-log-publisher.sh`
+
+4. **Golden pre-flight (run once before the audience arrives):**
+   ```bash
+   docker ps --filter name=traceon-broker          # broker up on 1883?
+   curl -s localhost:8082/health                   # mqtt_connected + has_data true?
+   ```
+   Both green → you're ready. Then eyeball the two **visual** legs that only you
+   can confirm: the physical **OLED** (boot splash) and the **dashboard** in a
+   browser.
+
+---
+
 ## 0. Before the audience arrives — one-time per network
 
 Find the Mac's IP on the demo Wi-Fi and reflash the board for it. The board bakes
@@ -47,6 +88,9 @@ docker run -d --name traceon-broker -p 1883:1883 \
 ```bash
 timeout 10 mosquitto_sub -h localhost -t 'TRAceON/logs' -C 1
 ```
+> No host `mosquitto_sub`/`mosquitto_pub`? Run it inside the broker container
+> instead, e.g. `docker exec traceon-broker mosquitto_sub -t 'TRAceON/logs' -C 1`.
+
 You should see one ISO `LogEntry` JSON within a few seconds. If nothing:
 - give it ~20 s after a reset (Wi-Fi → DHCP → SNTP → MQTT);
 - confirm the Mac's IP still matches what you flashed (`ipconfig getifaddr en0`);
@@ -108,8 +152,8 @@ only the real sensor telemetry + the OLED command demo.)
 
 | Symptom | Fix |
 |---|---|
-| Dashboard empty, `has_data:false` | board not publishing — check step 2; press board RESET |
-| Board silent on serial after flash | press RESET (board doesn't always auto-start post-flash) |
+| Dashboard empty, `has_data:false` | board not publishing — see triage item 2 (usually Mac IP changed or Wi-Fi); it auto-reconnects once the network is right |
+| Board silent on serial after flash | press RESET once (the board doesn't always auto-start immediately post-flash) |
 | `mqtt_connected:false` in `/health` | server can't reach broker — is `traceon-broker` up on 1883? |
 | Board won't join Wi-Fi | 2.4 GHz only; no captive portal; re-run step 0 with correct creds |
 | Changed network/IP | re-run step 0 (reflash); broker needs no change (binds 0.0.0.0) |
