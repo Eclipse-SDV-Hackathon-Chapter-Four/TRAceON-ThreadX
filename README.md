@@ -129,9 +129,10 @@ winget install --id=Kitware.CMake  -e
 To compile the application, use the provided scripts in the `MXChip/AZ3166/scripts` folder.
 
 ### Windows (PowerShell)
-You can build the application using `build.ps1`. It accepts a `-Config` parameter to select the application version (`starter`, `arcade`, `telemetry`, or `mqtt`).
+Build with `build.ps1`. This project ships a single application config, `mqtt`
+(the default), so no parameter is needed:
 ```powershell
-.\scripts\build.ps1 -Config starter
+.\scripts\build.ps1
 ```
 
 To deploy, use `deploy.ps1` (adjust the destination drive as needed):
@@ -140,9 +141,9 @@ To deploy, use `deploy.ps1` (adjust the destination drive as needed):
 ```
 
 ### Linux / MacOS (Bash)
-Use `build.sh` with the configuration name as the first argument.
+Build with `build.sh` (the `mqtt` config is the default):
 ```bash
-./scripts/build.sh starter
+./scripts/build.sh
 ```
 
 To deploy, use `deploy.sh` (adjust the destination path as needed):
@@ -189,12 +190,17 @@ If the WiFi is properly congiured, you will get the output below at application 
 > ```
 
 ## Where to go from here
-The application supports multiple configurations that you can select at build time:
+This repository ships a single application config, **`mqtt`** — the TRAceON
+firmware:
 
-- `starter`: Initiates the board and WiFi connectivity.
-- `telemetry`: Adds code to read the on-board sensors and print the output.
-- `mqtt`: Adds code to publish the telemetry over MQTT. Also creates a second thread subscribing to an MQTT topic; the received messages will be printed. (Note: This configuration builds upon `telemetry`).
-- `arcade`: A collection of arcade games. Thanks to Sébastien Heurtematte for this contribution!
+- Reads the on-board sensors (temperature, humidity, pressure, accelerometer,
+  magnetometer) and publishes telemetry over MQTT to `TRAceON/sensor-data`.
+- Emits ISO 17978-3 (SOVD) structured log entries to `TRAceON/logs`
+  (see [ARCHITECTURE.md](ARCHITECTURE.md) and `app/common/logger.h`).
+- Subscribes to `TRAceON/incoming` for commands, shown on the OLED.
+
+The firmware source lives in `app/mqtt` and `app/common`. (The upstream sample's
+`starter`, `telemetry`, and `arcade` configs were removed; only `mqtt` remains.)
 
 
 ### Networking support
