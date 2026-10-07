@@ -54,6 +54,9 @@ public class TelemetryServer {
         logStream.setAsyncSupported(true);
         ctx.addServlet(logStream, "/logs/entries");
 
+        // Self-contained live dashboard (same-origin -> no CORS needed).
+        ctx.addServlet(new ServletHolder(new DashboardServlet()), "/dashboard");
+
         // Jersey handles everything else (JSON routes).
         ServletHolder jersey = new ServletHolder(new ServletContainer(config));
         jersey.setInitOrder(1);
