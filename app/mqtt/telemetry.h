@@ -22,6 +22,12 @@
 // Log telemetry if needed
 #define LOG_TELEMETRY
 
+// DEMO MODE: when defined, the telemetry thread emits a frequent, varied stream
+// of log entries (cycling severities/contexts) in addition to publishing
+// telemetry. Handy for demos/stress-testing the log path. Comment out to return
+// to the normal low-rate behaviour. See DEMO_LOG_INTERVAL_SEC in telemetry.c.
+#define DEMO_LOGS
+
 // Sensor data
 typedef struct{
     float pressure_hPa;

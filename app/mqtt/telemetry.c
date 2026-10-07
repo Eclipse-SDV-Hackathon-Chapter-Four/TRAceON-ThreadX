@@ -97,6 +97,51 @@ static void print_sensor_data(sensor_data data){
 }
 #endif
 
+#ifdef DEMO_LOGS
+// DEMO MODE: emit one varied log entry per demo tick, cycling through this table
+// so the stream shows a realistic mix of severities and contexts. Not meant for
+// production — toggle via DEMO_LOGS in telemetry.h.
+#define DEMO_LOG_INTERVAL_SEC 1   // emit a demo log this often (seconds)
+
+typedef enum { SEV_INFO, SEV_WARN, SEV_ERROR, SEV_DEBUG, SEV_VERBOSE, SEV_FATAL } demo_sev;
+
+typedef struct {
+    demo_sev    severity;
+    const char* context_id;
+    const char* msg;
+} demo_log_entry;
+
+// A rolling script of plausible vehicle/edge events across severities.
+static const demo_log_entry demo_log_script[] = {
+    { SEV_INFO,    "Main",       "heartbeat" },
+    { SEV_DEBUG,   "SensorTask", "sensor poll cycle complete" },
+    { SEV_INFO,    "Telemetry",  "telemetry frame published" },
+    { SEV_VERBOSE, "I2C",        "bus transaction ok" },
+    { SEV_WARN,    "SensorTask", "humidity near upper plausibility bound" },
+    { SEV_INFO,    "MQTT",       "broker keep-alive ok" },
+    { SEV_ERROR,   "MQTT",       "publish retry after transient error" },
+    { SEV_DEBUG,   "Power",      "battery sample nominal" },
+    { SEV_WARN,    "Thermal",    "temperature trending high" },
+    { SEV_INFO,    "Main",       "system nominal" },
+    { SEV_FATAL,   "Watchdog",   "simulated fault (demo only)" },
+    { SEV_VERBOSE, "Net",        "DHCP lease still valid" },
+};
+static const size_t demo_log_script_len =
+    sizeof(demo_log_script) / sizeof(demo_log_script[0]);
+
+static void emit_demo_log(size_t idx) {
+    const demo_log_entry* e = &demo_log_script[idx % demo_log_script_len];
+    switch (e->severity) {
+        case SEV_INFO:    traceon_log_info(e->context_id, e->msg);    break;
+        case SEV_WARN:    traceon_log_warn(e->context_id, e->msg);    break;
+        case SEV_ERROR:   traceon_log_error(e->context_id, e->msg);   break;
+        case SEV_DEBUG:   traceon_log_debug(e->context_id, e->msg);   break;
+        case SEV_VERBOSE: traceon_log_verbose(e->context_id, e->msg); break;
+        case SEV_FATAL:   traceon_log_fatal(e->context_id, e->msg);   break;
+    }
+}
+#endif // DEMO_LOGS
+
 /**
  * Entry point for the telemetry thread.
  */
@@ -104,6 +149,9 @@ void telemetry_thread_entry(ULONG parameter)
 {
     //UINT status;
     sensor_data new_sensor_data;
+#ifdef DEMO_LOGS
+    size_t demo_log_index = 0;   // rolls through demo_log_script
+#endif
 
     printf("Starting telemetry thread\r\n\r\n");
 
@@ -146,11 +194,22 @@ void telemetry_thread_entry(ULONG parameter)
         tx_event_flags_set(&mqtt_app_flag, MQTT_MESSAGE_READY, TX_OR);
         current_sensor_data = new_sensor_data;
 
+#ifdef DEMO_LOGS
+        // DEMO MODE: keep telemetry at telemetry_interval, but emit a varied log
+        // every DEMO_LOG_INTERVAL_SEC by sleeping in sub-steps. Cycles through
+        // demo_log_script so the stream shows a mix of severities/contexts.
+        for (int32_t elapsed = 0; elapsed < telemetry_interval;
+             elapsed += DEMO_LOG_INTERVAL_SEC) {
+            emit_demo_log(demo_log_index++);
+            tx_thread_sleep(TX_TIMER_TICKS_PER_SECOND * DEMO_LOG_INTERVAL_SEC);
+        }
+#else
         // TEMPORARY (test): emit a heartbeat log every cycle so the board's
         // log path (TRAceON/logs) is exercised on real hardware. Remove later.
         traceon_log_info("Main", "heartbeat");
 
         tx_thread_sleep(TX_TIMER_TICKS_PER_SECOND * telemetry_interval);
+#endif
     }
 }
 
