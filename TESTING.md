@@ -3,6 +3,17 @@
 Unit / module tests for the three TRAceON codebases. All run on the host — no
 board required.
 
+**Run all three at once:**
+```bash
+./scripts/run-tests.sh            # firmware + python + java; quiet (one line/suite) + summary
+./scripts/run-tests.sh -v         # verbose: stream each suite's full output
+./scripts/run-tests.sh python java   # or a subset
+```
+Quiet mode shows a suite's full output only if it fails; exits non-zero if any
+suite fails. `-h`/`--help` prints usage.
+
+Or run a single suite directly:
+
 | Suite | Count | Framework | Command |
 |---|---|---|---|
 | Python server | 39 | pytest | `cd telemetry-server && ./setup.sh && . .venv/bin/activate && pip install -r requirements-dev.txt && pytest` |
