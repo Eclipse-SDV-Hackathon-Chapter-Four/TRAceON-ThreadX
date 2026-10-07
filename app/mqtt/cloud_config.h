@@ -50,7 +50,6 @@ typedef enum
 // ----------------------------------------------------------------------------
 // MQTT Support infrastructure
 // ----------------------------------------------------------------------------
-extern TX_QUEUE mqtt_queue;
 extern TX_EVENT_FLAGS_GROUP mqtt_app_flag;
 #define MQTT_RECEIVE_EVENT 1
 #define MQTT_MESSAGE_READY 2

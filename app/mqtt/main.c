@@ -34,10 +34,8 @@
 #define ECLIPSETX_THREAD_STACK_SIZE 4096
 #define ECLIPSETX_THREAD_PRIORITY   4
 #define BYTE_POOL_SIZE              1024
-#define QUEUE_SIZE                  16
 
 
-TX_QUEUE mqtt_queue;
 TX_EVENT_FLAGS_GROUP mqtt_app_flag;
 TX_BYTE_POOL byte_pool;
 TX_THREAD telemetry_thread;
@@ -48,13 +46,6 @@ ULONG mqtt_thread_stack[ECLIPSETX_THREAD_STACK_SIZE / sizeof(ULONG)];
 void tx_application_define(void* first_unused_memory)
 {
     systick_interval_set(TX_TIMER_TICKS_PER_SECOND);
-    CHAR *pointer;
-
-    /* Allocate the message queue. */
-    tx_byte_allocate(&byte_pool, (VOID **)&pointer, QUEUE_SIZE*sizeof(ULONG), TX_NO_WAIT);
-
-    /* Create the message queue shared by the telemetry and MQTT threads */
-    tx_queue_create(&mqtt_queue, "Shared queue", TX_1_ULONG, pointer, QUEUE_SIZE*sizeof(ULONG));
 
     /* Create the MQTT event-flags group BEFORE the threads start. Previously it
      * was created inside the MQTT thread, so the telemetry thread could set
