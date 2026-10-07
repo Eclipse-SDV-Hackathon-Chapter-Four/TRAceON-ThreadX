@@ -287,6 +287,10 @@ void mqtt_thread_entry(ULONG parameter){
 
     printf("Starting Eclipse ThreadX MQTT thread\r\n\r\n");
 
+    /* Boot splash on the OLED (screen was initialized in board_init). Shows
+     * before WiFi/MQTT so the display looks alive at startup. */
+    screen_print_wrapped("TRAceON:", "logger", 6);
+
     // Initialize the network
     if ((status = wwd_network_init(WIFI_SSID, WIFI_PASSWORD, WIFI_MODE))){
         printf("ERROR: Failed to initialize the network (0x%08x)\r\n", status);
