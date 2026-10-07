@@ -37,10 +37,24 @@
 ```bash
 export ARM_GCC_PATH="/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin"
 cd ~/repos/IEH/TRAceON-ThreadX
-./scripts/build.sh <app> [clean|rebuild]
+
+# Minimal (uses the baked-in defaults):
+./scripts/build.sh mqtt [clean|rebuild]
+
+# Full form — every configurable build-time variable (all optional; each falls
+# back to its cloud_config.h default if omitted). See §5 for the reference table.
+WIFI_SSID='MyNetwork' \
+WIFI_PASSWORD='mypassword' \
+BROKER_IP='192.168.1.50' \
+MQTT_CLIENT_NAME='TRAceON' \
+  ./scripts/build.sh mqtt clean
 ```
 
-- `<app>` is `mqtt` (the only app config; the default). The upstream sample's
+- **Build-time config env-vars** (all optional): `WIFI_SSID`, `WIFI_PASSWORD`,
+  `BROKER_IP` (dotted IPv4), `MQTT_CLIENT_NAME`. They override the matching
+  `cloud_config.h` defaults. **Pass `clean` (or `rebuild`) whenever you set/change
+  them** — they apply at CMake configure time. Full details + defaults in §5.
+- `mqtt` is the only app config (the default). The upstream sample's
   `starter`/`telemetry`/`arcade` configs were removed — see the README.
 - The toolchain is found via `ARM_GCC_PATH` (checked first) or `arm-none-eabi-gcc` on PATH.
   If neither is set, CMake aborts with "Unable to find ARM GCC".
