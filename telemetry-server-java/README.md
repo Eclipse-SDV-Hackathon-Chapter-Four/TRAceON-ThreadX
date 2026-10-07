@@ -70,6 +70,11 @@ Streaming (Server-Sent Events) — the primary telemetry/logs interface:
   `LogEntry` `{timestamp, context (AUTOSAR_DLT object), severity (DLT_*), msg}` on
   `TRAceON/logs`.
 
+Live dashboard (Java server only):
+- `GET  /dashboard` — a self-contained HTML page that consumes the two SSE streams
+  (same-origin, no CORS) and shows live telemetry + a color-coded ISO log stream.
+  Open <http://localhost:8082/dashboard> in a browser.
+
 Log forwarding (optional sink, separate from SSE; `TRACEON_LOG_FORWARD_URL`):
 - `GET  /logs/forwarding`        (status)
 - `POST /logs/forwarding/start`  (optional `{"url":"..."}` override)
@@ -121,6 +126,7 @@ src/main/java/org/traceon/
   Json.java              JSON-B (Yasson) serializer for SSE payloads
   SseRegistry.java       thread-safe SSE writer registry (telemetry/logs channels)
   SseServlet.java        plain async Jakarta servlet for the two SSE streams
+  DashboardServlet.java  serves the live SSE dashboard HTML at /dashboard
   TelemetryResource.java JAX-RS: /health, /telemetry/latest(/{field}), POST /command, /logs
   SovdResource.java      JAX-RS: /components/{component}/data(/{resourceId})
   TelemetryServer.java   main: Jetty + Jersey + JSON-B + SSE servlets wiring

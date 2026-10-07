@@ -103,6 +103,9 @@ logs. The log/event wire format follows **ISO 17978-3 (SOVD)**: `LogEntry`
 - **SOVD-flavoured reads:** `GET /components/{component}/data[/{resource}]`
   (ISO-shaped data resources; component id = `TRAceON`).
 - **Command to board:** `POST /command` → published to `TRAceON/incoming`.
+- **Live dashboard (Java server only):** `GET /dashboard` — a self-contained HTML
+  page that consumes the SSE streams (same-origin) and shows live telemetry +
+  color-coded ISO logs.
 
 Full reference: `API.md`.
 

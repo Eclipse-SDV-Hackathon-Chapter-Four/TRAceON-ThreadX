@@ -95,6 +95,11 @@ Response (identical shape on both servers):
 | GET | `/logs/entries` | **SSE stream** of `EventEnvelope`-wrapped `LogEntry` (live). |
 | GET | `/logs/history` | Last ≤100 `LogEntry` (ISO-pure list; see query params). |
 
+### Dashboard (Java server only)
+| Method | Path | Description |
+|---|---|---|
+| GET | `/dashboard` | Self-contained live HTML dashboard (consumes the SSE streams same-origin). Open `http://localhost:8082/dashboard`. |
+
 ### Log forwarding (optional sink — separate from SSE)
 Forwards each received `LogEntry` to a fixed URL (env `TRACEON_LOG_FORWARD_URL`)
 via HTTP POST. Fire-and-forget; **off by default**; controlled at runtime.
