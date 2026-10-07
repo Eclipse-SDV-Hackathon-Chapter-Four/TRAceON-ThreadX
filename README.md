@@ -14,18 +14,21 @@
 
 -->
 
-# Eclipse ThreadX IoT DevKit Starter Application
+# TRAceON — AZ3166 telemetry + ISO 17978-3 (SOVD) logging
 
-This starter application is an adaptation of a sample developed originally by Microsoft. The original code can be found here:
+TRAceON is an Eclipse SDV demo: an MXChip AZ3166 board (Eclipse ThreadX /
+NetX Duo) publishes sensor telemetry and ISO 17978-3 (SOVD) logs over MQTT,
+consumed by interchangeable Mac-side HTTP servers (Python/FastAPI and
+Java/Jakarta) with a live dashboard and optional HTTP log forwarding.
 
-[https://github.com/eclipse-threadx/getting-started](https://github.com/eclipse-threadx/getting-started)
+The firmware began as an Eclipse ThreadX IoT DevKit starter application — an
+adaptation of a Microsoft sample ([eclipse-threadx/getting-started](https://github.com/eclipse-threadx/getting-started))
+with the Azure IoT Cloud support removed. The only board supported is the
+MXChip AZ3166.
 
-We removed code providing support for Azure IoT Cloud. The only board supported is the MXChip AZ3166 for the time being.
+## Project documentation
 
-## TRAceON project documentation
-
-This repository has been extended into the **TRAceON** telemetry + ISO 17978-3
-(SOVD) logging demo. Project-specific docs:
+Project-specific docs:
 
 - [DEMO.md](DEMO.md) — step-by-step demo runbook (broker → server → dashboard → board command).
 - [LIMITATIONS.md](LIMITATIONS.md) — known gaps & future work (robustness, security, openDuT, test scope).
