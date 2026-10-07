@@ -150,4 +150,3 @@ MQTT (TRAceON/sensor-data) → MqttClient → parser → TelemetryStore (latest)
 ```
 
 Modules kept decoupled on purpose so the SOVD adapter can grow independently.
-See `../telemetry-server-PLAN.md` for the roadmap/backlog.

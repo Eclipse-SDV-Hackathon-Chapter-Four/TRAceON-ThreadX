@@ -5,8 +5,8 @@
 """Thread-safe in-memory store for the latest telemetry reading.
 
 The MQTT client thread writes; the HTTP (async) handlers read. A simple lock
-keeps it consistent. Only the latest reading is kept (history is a future
-enhancement — see telemetry-server-PLAN.md).
+keeps it consistent. The latest reading plus a bounded history are kept
+(history size via TRACEON_TELEMETRY_HISTORY_SIZE).
 """
 from __future__ import annotations
 
