@@ -27,6 +27,7 @@ We removed code providing support for Azure IoT Cloud. The only board supported 
 This repository has been extended into the **TRAceON** telemetry + ISO 17978-3
 (SOVD) logging demo. Project-specific docs:
 
+- [DEMO.md](DEMO.md) — step-by-step demo runbook (broker → server → dashboard → board command).
 - [ARCHITECTURE.md](ARCHITECTURE.md) — end-to-end overview: AZ3166 → broker → server → forwarding sink, and the Eclipse components used.
 - [API.md](API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
 - [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
