@@ -1,5 +1,5 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 Contributors to the Eclipse Foundation
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 the TRAceON team
 # Portions of this file were generated with AI assistance.
 
 """Thread-safe in-memory store for the latest telemetry reading.
