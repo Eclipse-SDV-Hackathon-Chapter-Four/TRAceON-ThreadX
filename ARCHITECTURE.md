@@ -1,7 +1,7 @@
 # TRAceON — Architecture Overview
 
-A telemetry-and-logging pipeline from an **MXChip AZ3166** IoT DevKit to a
-Mac-side HTTP server, using **ISO 17978-3 (SOVD)** log/event models and built on
+A telemetry-and-logging pipeline from an **MXChip AZ3166** IoT DevKit to an
+HTTP server, using **ISO 17978-3 (SOVD)** log/event models and built on
 **Eclipse SDV / Eclipse Foundation** components throughout.
 
 ```

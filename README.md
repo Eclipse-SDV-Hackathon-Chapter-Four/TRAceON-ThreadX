@@ -18,7 +18,7 @@
 
 TRAceON is an Eclipse SDV demo: an MXChip AZ3166 board (Eclipse ThreadX /
 NetX Duo) publishes sensor telemetry and ISO 17978-3 (SOVD) logs over MQTT,
-consumed by interchangeable Mac-side HTTP servers (Python/FastAPI and
+consumed by interchangeable HTTP servers (Python/FastAPI and
 Java/Jakarta) with a live dashboard and optional HTTP log forwarding.
 
 The firmware began as an Eclipse ThreadX IoT DevKit starter application — an

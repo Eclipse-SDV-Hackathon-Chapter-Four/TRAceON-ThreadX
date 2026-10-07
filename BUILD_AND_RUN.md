@@ -6,7 +6,7 @@
 > Covers: (1) building & flashing the firmware, (2) running the MQTT broker in Docker,
 > (3) watching/sending MQTT, (4) serial-console debugging, (5) the gotchas we hit.
 >
-> **Mac-side HTTP server** that consumes this telemetry (FastAPI, with a SOVD-flavored
+> **HTTP server** that consumes this telemetry (FastAPI, with a SOVD-flavored
 > surface for future OpenSOVD): see [`telemetry-server/README.md`](telemetry-server/README.md).
 
 ---
