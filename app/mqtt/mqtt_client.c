@@ -166,7 +166,6 @@ static void send_message(){
 static void receive_message(){
     UINT status;
     UINT topic_length, message_length;
-    ULONG message_sent = 0;
 
     status = nxd_mqtt_client_message_get(&mqtt_client, topic_buffer, sizeof(topic_buffer), &topic_length,
                                         message_buffer, sizeof(message_buffer), &message_length);
@@ -174,12 +173,10 @@ static void receive_message(){
     if (status == NXD_MQTT_SUCCESS){
         topic_buffer[topic_length] = 0;
         message_buffer[message_length] = 0;
-        message_sent = message_buffer[0];
-        status = tx_queue_send(&mqtt_queue, &message_sent, TX_WAIT_FOREVER);
         printf("Topic: %s, Message: %s\r\n", topic_buffer, message_buffer);
 
         /* Show the incoming message on the OLED (header + wrapped payload). */
-        screen_print_wrapped("Message:", (const char*)message_buffer, message_length);
+        screen_print_wrapped("TRAceON:", (const char*)message_buffer, message_length);
     }
 }
 
