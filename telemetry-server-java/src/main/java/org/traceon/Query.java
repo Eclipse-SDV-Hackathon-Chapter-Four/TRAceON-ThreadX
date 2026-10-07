@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Query helpers for the /history endpoints: ISO-8601 since/until parsing (to
  * epoch millis) and limit clamping. Time filtering is on the server-side
  * receive time, per the agreed design.

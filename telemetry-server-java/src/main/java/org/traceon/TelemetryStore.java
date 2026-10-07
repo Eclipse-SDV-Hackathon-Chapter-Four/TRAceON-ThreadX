@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Shared, thread-safe latest-telemetry store.
  * Fields are stored with proper types (Double / double[]) so JSON-B (Yasson)
  * serializes vectors as real JSON arrays, not strings.

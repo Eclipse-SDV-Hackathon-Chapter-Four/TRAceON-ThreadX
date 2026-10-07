@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """MQTT client wrapper: subscribes to the board's sensor-data topic, updates the
 store, and can publish commands back to the board.
 

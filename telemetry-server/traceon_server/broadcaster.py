@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """Thread -> async bridge for SSE streaming.
 
 The MQTT client runs its network loop in a background THREAD, while FastAPI

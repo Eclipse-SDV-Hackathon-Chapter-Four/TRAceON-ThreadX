@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Optional log forwarding sink (SEPARATE from SSE): when started, each received
  * LogEntry is POSTed to TRACEON_LOG_FORWARD_URL. Fire-and-forget on a background
  * worker thread + bounded queue so it never blocks MQTT ingestion. OFF by default;

@@ -1,11 +1,14 @@
 /*
  *  Copyright (c) 2026 Contributors to the Eclipse Foundation
+ *  Copyright (c) 2026 the TRAceON team
  *
  *  This program and the accompanying materials are made available
  *  under the terms of the MIT license which is available at
  *  https://opensource.org/license/mit.
  *
  *  SPDX-License-Identifier: MIT
+ *
+ *  Portions of this file were generated with AI assistance.
  */
 
 #include "logger.h"

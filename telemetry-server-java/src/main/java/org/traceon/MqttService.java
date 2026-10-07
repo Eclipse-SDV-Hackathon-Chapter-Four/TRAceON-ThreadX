@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Eclipse Paho MQTT service: subscribes to the sensor topic, parses the board's
  * plain-text payload into TYPED fields, and can publish commands to the board.
  */

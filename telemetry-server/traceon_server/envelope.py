@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """ISO 17978-3 EventEnvelope (Table 5) used to wrap events on SSE streams.
 
     { "timestamp": "<server emit time, ISO-8601>",

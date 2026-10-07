@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """Optional log forwarding sink.
 
 A SEPARATE function from SSE: when started, each received LogEntry is POSTed to

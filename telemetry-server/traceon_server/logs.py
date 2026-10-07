@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """Log ingestion for TRAceON — ISO 17978-3 LogEntry (Table 316).
 
 The board publishes JSON log entries on `TRAceON/logs`:

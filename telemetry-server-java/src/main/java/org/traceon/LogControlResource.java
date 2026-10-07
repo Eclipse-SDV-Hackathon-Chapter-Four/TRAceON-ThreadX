@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * JAX-RS control endpoints for the optional log forwarding sink (separate from SSE):
  *   GET  /logs/forwarding        -> status
  *   POST /logs/forwarding/start  -> start (optional {"url": "..."} override)

@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Logs: thread-safe ring buffer of ISO 17978-3 LogEntry (Table 316) objects.
  *
  * Board publishes JSON on TRAceON/logs:

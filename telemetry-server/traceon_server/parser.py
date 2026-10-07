@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 the TRAceON team
+# Portions of this file were generated with AI assistance.
+
 """Parse the AZ3166's plain-text telemetry payload into structured fields.
 
 The firmware publishes (see app/mqtt/telemetry.c -> get_sensor_data_buffer):

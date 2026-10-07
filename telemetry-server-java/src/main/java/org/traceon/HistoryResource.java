@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * JAX-RS history endpoints — snapshot queries over the ring buffers with filters.
  *   GET /telemetry/history  (limit, field, since, until)
  *   GET /logs/history       (limit, severity[csv], context, since, until)

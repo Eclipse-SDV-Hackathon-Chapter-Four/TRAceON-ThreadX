@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * JAX-RS resource — SOVD-flavored surface (ISO 17978 resource shape) for future
  * Eclipse OpenSOVD integration. Models telemetry fields as SOVD 'data' resources
  * under a component entity.

@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Plain-servlet SSE fan-out (no JAX-RS SSE).
  *
  * Why not JAX-RS SSE: Jersey's SseEventSink requires async servlet support that

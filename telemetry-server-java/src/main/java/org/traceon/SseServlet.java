@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 the TRAceON team
+ * Portions of this file were generated with AI assistance.
+ */
+/*
  * Plain Jakarta async servlet implementing the two SSE streams:
  *   GET /telemetry/stream  -> channel "telemetry"
  *   GET /logs/stream       -> channel "logs"
