@@ -45,10 +45,20 @@ cd "${BUILD_DIR}"
 # Check if CMakeCache exists for incremental build
 if [ ! -f "CMakeCache.txt" ] || [ ! -f "build.ninja" ] || [ "$2" == "rebuild" ]; then
     echo "[INFO] Configuring CMake..."
+    # Optional build-time config overrides (empty ones are omitted so the
+    # cloud_config.h defaults apply). NOTE: these take effect at CMAKE CONFIGURE
+    # time, so after changing them run a clean/rebuild:
+    #   WIFI_SSID=... WIFI_PASSWORD=... BROKER_IP=a.b.c.d ./scripts/build.sh mqtt clean
+    CONFIG_ARGS=()
+    [ -n "${WIFI_SSID:-}" ]        && CONFIG_ARGS+=("-DWIFI_SSID=${WIFI_SSID}")
+    [ -n "${WIFI_PASSWORD:-}" ]    && CONFIG_ARGS+=("-DWIFI_PASSWORD=${WIFI_PASSWORD}")
+    [ -n "${BROKER_IP:-}" ]        && CONFIG_ARGS+=("-DBROKER_IP=${BROKER_IP}")
+    [ -n "${MQTT_CLIENT_NAME:-}" ] && CONFIG_ARGS+=("-DMQTT_CLIENT_NAME=${MQTT_CLIENT_NAME}")
     cmake -G Ninja \
         "-DCMAKE_BUILD_TYPE=Release" \
         "-DAPP_CONFIG=${CONFIG}" \
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
+        "${CONFIG_ARGS[@]}" \
         ..
     echo "[OK] CMake configured"
     echo ""

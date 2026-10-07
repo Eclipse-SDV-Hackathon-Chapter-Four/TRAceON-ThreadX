@@ -214,6 +214,31 @@ Published message.
 Change the client/team name in ONE place (`MQTT_CLIENT_NAME`) — topics follow.
 If the Mac's IP changes, update `MQTT_LOCAL_BROKER_IP` and rebuild+flash.
 
+### Build-time overrides (no file edit needed)
+
+The WiFi SSID/password, broker IP, and client name can be set **at build time**
+via environment variables, so you don't have to edit `cloud_config.h` for every
+network. They override the defaults above (which remain the fallback):
+
+```bash
+WIFI_SSID='MyNetwork' \
+WIFI_PASSWORD='mypassword' \
+BROKER_IP=192.168.1.50 \
+MQTT_CLIENT_NAME='TRAceON' \
+  ./scripts/build.sh mqtt clean      # 'clean' is REQUIRED after changing these
+./scripts/deploy.sh
+```
+
+- Any omitted variable keeps the `cloud_config.h` default.
+- `BROKER_IP` is dotted IPv4 (`a.b.c.d`); it's split into octets for
+  `IP_ADDRESS(...)`.
+- These apply at **CMake configure** time, so you must pass `clean` (or
+  `rebuild`) after changing them — an incremental build won't re-read them.
+- Mechanism: `build.sh` forwards the vars as `-D` to CMake →
+  `target_compile_definitions` → `#ifndef` guards in `cloud_config.h`.
+- Keeps real credentials **out of git** (they live only on your build command,
+  not in the committed source).
+
 ---
 
 ## 6. MQTT error codes we decoded (NetX Duo, `nxd_mqtt_client.h`)

@@ -206,6 +206,15 @@ To connect the board to a WiFi network, edit the following constants found in `c
 
 Make sure to select an appropriate value for `WIFI_MODE` as well.
 
+> Alternatively — and to keep credentials out of git — set these at **build
+> time** without editing the file:
+> ```bash
+> WIFI_SSID='MyNet' WIFI_PASSWORD='secret' BROKER_IP=192.168.1.50 \
+>   ./scripts/build.sh mqtt clean
+> ```
+> See "Build-time overrides" in [BUILD_AND_RUN.md](BUILD_AND_RUN.md) for details
+> (`WIFI_SSID`, `WIFI_PASSWORD`, `BROKER_IP`, `MQTT_CLIENT_NAME`; `clean` required).
+
 If the WiFi is properly congiured, you will get the output below at application startup:
 
 > ```

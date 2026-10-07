@@ -49,6 +49,37 @@ list(APPEND SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# ---- Build-time configuration overrides (optional) ----------------------
+# Passed from scripts/build.sh env vars -> CMake cache -> compiler -D defines,
+# overriding the #ifndef defaults in app/mqtt/cloud_config.h. Only defined when
+# the corresponding CMake variable is non-empty, so defaults still apply.
+if(WIFI_SSID)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WIFI_SSID="${WIFI_SSID}")
+endif()
+if(WIFI_PASSWORD)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WIFI_PASSWORD="${WIFI_PASSWORD}")
+endif()
+if(MQTT_CLIENT_NAME)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE MQTT_CLIENT_NAME="${MQTT_CLIENT_NAME}")
+endif()
+if(BROKER_IP)
+    # Split dotted IPv4 "a.b.c.d" into four octet defines.
+    string(REPLACE "." ";" _octets "${BROKER_IP}")
+    list(LENGTH _octets _n)
+    if(NOT _n EQUAL 4)
+        message(FATAL_ERROR "BROKER_IP must be dotted IPv4 'a.b.c.d', got '${BROKER_IP}'")
+    endif()
+    list(GET _octets 0 _o1)
+    list(GET _octets 1 _o2)
+    list(GET _octets 2 _o3)
+    list(GET _octets 3 _o4)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        MQTT_BROKER_O1=${_o1} MQTT_BROKER_O2=${_o2}
+        MQTT_BROKER_O3=${_o3} MQTT_BROKER_O4=${_o4})
+    message(STATUS "Broker IP override: ${BROKER_IP}")
+endif()
+# -------------------------------------------------------------------------
+
 target_link_libraries(${PROJECT_NAME}
     azrtos::threadx
     azrtos::netxduo
