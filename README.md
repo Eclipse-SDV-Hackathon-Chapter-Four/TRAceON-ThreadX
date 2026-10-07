@@ -37,6 +37,31 @@ This repository has been extended into the **TRAceON** telemetry + ISO 17978-3
 - [telemetry-server-PLAN.md](telemetry-server-PLAN.md) — server design notes and decisions.
 - `scripts/forwarding-demo/` — one-command tmux demos (`start.sh` local, `start-remote.sh` remote).
 
+## Repository layout
+
+This repo began as the Eclipse ThreadX AZ3166 sample, so the **firmware lives at
+the repository root** (not in its own subdirectory), while the two servers were
+added later as subdirectories. In short:
+
+| Path | What it is |
+|---|---|
+| `app/` | **Firmware source** — our code: `app/mqtt/` (telemetry, MQTT client, main) and `app/common/` (logger, screen, SNTP, board init). This is the AZ3166 application. |
+| `lib/`, `deps/` | Vendored firmware dependencies — Eclipse ThreadX & NetXDuo, STM32Cube HAL, MXChip BSP, ssd1306, nanoprintf. Not our code. |
+| `cmake/`, `CMakeLists.txt`, `scripts/` | Firmware build system (`scripts/build.sh`, `scripts/deploy.sh`) and CMake config. |
+| `build/` | Firmware build output (generated; gitignored). |
+| `telemetry-server/` | **Python/FastAPI** telemetry+log server (self-contained subproject). |
+| `telemetry-server-java/` | **Java/Jakarta** telemetry+log server (self-contained subproject). |
+| `*.md` | Project docs (see the index above). |
+
+So: **firmware = root (`app` + `lib` + `deps` + `cmake` + `scripts`)**; **servers
+= `telemetry-server/` and `telemetry-server-java/`**. A future refactor could move
+the firmware under a `firmware/` directory for symmetry, but that touches the
+CMake include paths and build scripts, so it's deliberately left as-is for now.
+
+> Note: ThreadX and NetXDuo are currently **vendored** under `deps/lib/` (committed
+> directly), not live git submodules — the "submodules" wording below is from the
+> upstream sample's original instructions.
+
 The sections below are the original Eclipse ThreadX starter instructions.
 
 ## Cloning this repository
