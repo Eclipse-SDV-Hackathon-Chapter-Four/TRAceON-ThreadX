@@ -114,7 +114,7 @@ static UINT mqtt_publish_log(const char* json, UINT length)
     }
     UINT status = nxd_mqtt_client_publish(&mqtt_client,
                                           MQTT_LOG_TOPIC, STRLEN(MQTT_LOG_TOPIC),
-                                          (CHAR*)json, length, 0, QOS1, NX_WAIT_FOREVER);
+                                          (CHAR*)json, length, 0, QOS1, MQTT_CONNECT_TIMEOUT);
     if (status != NXD_MQTT_SUCCESS)
     {
         printf("Log publish failed with code: %d\r\n", status);
@@ -170,6 +170,11 @@ static void receive_message(){
                                         message_buffer, sizeof(message_buffer), &message_length);
     printf("Received message and status: %d \r\n", status);
     if (status == NXD_MQTT_SUCCESS){
+        /* NetX may return a length up to the full buffer capacity we passed;
+         * clamp before NUL-terminating so buf[length] can never write one past
+         * the end of the static buffer. */
+        if (topic_length   >= sizeof(topic_buffer))   { topic_length   = sizeof(topic_buffer)   - 1; }
+        if (message_length >= sizeof(message_buffer)) { message_length = sizeof(message_buffer) - 1; }
         topic_buffer[topic_length] = 0;
         message_buffer[message_length] = 0;
         printf("Topic: %s, Message: %s\r\n", topic_buffer, message_buffer);
