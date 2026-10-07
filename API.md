@@ -69,6 +69,19 @@ Used to wrap each event on the SSE **stream**:
 |---|---|---|
 | GET | `/health` | Liveness, MQTT connection status, data freshness. |
 
+Response (identical shape on both servers):
+```json
+{
+  "status": "ok",
+  "mqtt_connected": true,
+  "has_data": true,
+  "message_count": 42,
+  "last_message_age_seconds": 1.23   // null until the first message
+}
+```
+> `last_message_age_seconds` is in **seconds** (float; `null`/`None` before any
+> message) on both the Python and Java servers.
+
 ### Telemetry
 | Method | Path | Description |
 |---|---|---|

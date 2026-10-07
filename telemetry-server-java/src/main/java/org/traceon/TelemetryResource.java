@@ -31,7 +31,7 @@ public class TelemetryResource {
         m.put("mqtt_connected", store.mqttConnected());
         m.put("has_data", store.hasData());
         m.put("message_count", store.messageCount());
-        m.put("last_message_age_ms", store.lastMessageAgeMs());
+        m.put("last_message_age_seconds", store.lastMessageAgeSeconds());
         return m;
     }
 

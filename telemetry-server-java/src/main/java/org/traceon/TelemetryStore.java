@@ -83,4 +83,12 @@ public final class TelemetryStore {
         long t = receivedAtMs.get();
         return t == 0 ? -1 : System.currentTimeMillis() - t;
     }
+
+    /** Age of the last message in SECONDS (null if none yet) — matches the
+     *  Python server's /health "last_message_age_seconds" field. */
+    public Double lastMessageAgeSeconds() {
+        long t = receivedAtMs.get();
+        if (t == 0) return null;
+        return Math.round((System.currentTimeMillis() - t) / 10.0) / 100.0; // seconds, 2 dp
+    }
 }
