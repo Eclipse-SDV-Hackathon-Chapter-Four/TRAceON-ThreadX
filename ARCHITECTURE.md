@@ -138,6 +138,38 @@ snapshots, and (optionally) forwards it.
    on — POSTs each `LogEntry` to a downstream sink.
 4. Commands flow back: `POST /command` → `TRAceON/incoming` → board OLED.
 
+## Design rationale: why stream logs instead of persisting them on-device
+
+The board **streams** its ISO `LogEntry` logs off-board over MQTT rather than
+storing them locally. This is a deliberate choice driven by *what the logs are
+for*, not merely by the device's constraints:
+
+- **These are diagnostic/telemetry logs meant for off-board, real-time
+  consumption.** The log format follows **AUTOSAR DLT** (Diagnostic Log and
+  Trace), which is itself a *streaming* ECU-logging standard — logs are events to
+  be shipped off the device and consumed centrally (our servers, the dashboard,
+  a sink). The right model is "push events to the consumer," which is exactly
+  what MQTT pub/sub gives us. We would stream these even on a device that *could*
+  easily persist.
+- **On-device persistence answers a different requirement** — surviving
+  disconnection / black-box forensic retrieval, where the consumer later comes to
+  the device. That is a store-and-forward / recorder design, orthogonal to live
+  observability.
+- **The constraint is effort, not impossibility.** The AZ3166 (STM32F412) has no
+  mounted filesystem out of the box, but it is *not* unable to persist: it has
+  1 MB internal flash (plus external SPI flash), and Eclipse ThreadX ships
+  **FileX** (FAT) and **LevelX** (NOR/NAND wear-leveling) for exactly this. We
+  chose not to take on raw-flash management / wear-leveling for a demo — a scope
+  decision, not a hard limit.
+
+**Honest limitation + future work:** the current on-board log buffer
+(`log_ring`, 8 slots) is **in RAM**, so a reset or a prolonged broker/network
+outage loses whatever hasn't been published. A production system would typically
+do *both*: live streaming **plus** a bounded, persistent **store-and-forward**
+buffer (a small flash-backed ring via LevelX) that replays on reconnect. That
+durability layer — not a full filesystem — is the sound way to add resilience if
+it were needed.
+
 ## Eclipse components — SDV vs Foundation
 
 Not every "Eclipse" project is part of the **Eclipse SDV** working group; some are
