@@ -34,6 +34,7 @@ Project-specific docs:
 - [LIMITATIONS.md](LIMITATIONS.md) — known gaps & future work (robustness, security, openDuT, test scope).
 - [ARCHITECTURE.md](ARCHITECTURE.md) — end-to-end overview: AZ3166 → broker → server → forwarding sink, and the Eclipse components used.
 - [API.md](API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
+- [MQTT-TOPICS.md](MQTT-TOPICS.md) — the MQTT topics the board and servers use (payloads, QoS, direction, client IDs).
 - [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
 - [TESTING-LOG-FORWARDING.md](TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
 - [TESTING.md](TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
