@@ -24,7 +24,8 @@ demo-day failures are **environmental** (the network), not the code.
    - `mqtt_connected:true, has_data:false` → broker's fine, the **board isn't
      publishing**. Go to item 2.
    - `has_data:true` → data *is* flowing; the problem is the **browser/dashboard**
-     — hard-refresh `http://localhost:8082/dashboard`.
+     — hard-refresh `http://127.0.0.1:8082/dashboard` (use `127.0.0.1`, not
+     `localhost` — see the dashboard note in step 3).
 
 2. **Board not publishing?** The usual culprits, in order of likelihood:
    - **Mac IP changed** (new network, DHCP lease): `ipconfig getifaddr en0` and
@@ -108,7 +109,13 @@ TRACEON_MQTT_HOST=localhost java -jar target/telemetry-server-java-jar-with-depe
 
 Then open the live dashboard in a browser:
 
-> **http://localhost:8082/dashboard**
+> **http://127.0.0.1:8082/dashboard**
+
+> ⚠️ Use the **`127.0.0.1`** form, not `localhost`. On a managed Mac a system
+> proxy/PAC config can buffer or stall the dashboard's SSE streams when the host
+> is `localhost` (the page loads but just shows a spinner); `127.0.0.1` bypasses
+> the proxy exception rules. The server itself is fine either way (`curl` proves
+> it) — this is a browser-proxy quirk.
 
 You'll see telemetry metrics updating and a color-coded ISO log stream scrolling
 (the board emits a varied demo stream ~1/sec).
