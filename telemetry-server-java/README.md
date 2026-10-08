@@ -22,7 +22,7 @@ Broker is Eclipse Mosquitto → the whole path is Eclipse.
 ## Prerequisites
 
 - JDK 21+ (tested on JDK 27). Maven 3.x (`brew install maven`).
-- The MQTT broker running (see `../BUILD_AND_RUN.md` — Docker `traceon-broker`).
+- The MQTT broker running (see `../docs/BUILD_AND_RUN.md` — Docker `traceon-broker`).
 
 ## Build & run
 
@@ -80,7 +80,7 @@ Log forwarding (optional sink, separate from SSE; `TRACEON_LOG_FORWARD_URL`):
 - `POST /logs/forwarding/start`  (optional `{"url":"..."}` override)
 - `POST /logs/forwarding/stop`
 
-> Full API: see [`../API.md`](../API.md).
+> Full API: see [`../docs/API.md`](../docs/API.md).
 
 Simple:
 - `GET  /health`

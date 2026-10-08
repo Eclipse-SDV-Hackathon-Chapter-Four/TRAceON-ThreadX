@@ -8,7 +8,7 @@ so a future **Eclipse OpenSOVD** gateway can integrate with minimal glue.
 ## Prerequisites
 
 - Python 3.11+ (tested on 3.14).
-- The MQTT broker running (see `../BUILD_AND_RUN.md` — the Docker `traceon-broker`).
+- The MQTT broker running (see `../docs/BUILD_AND_RUN.md` — the Docker `traceon-broker`).
 
 ## Setup & run
 
@@ -87,7 +87,7 @@ Forwards each received `LogEntry` to `TRACEON_LOG_FORWARD_URL` via HTTP POST
 - `POST /logs/forwarding/start` — start (optional body `{"url": "..."}` override).
 - `POST /logs/forwarding/stop` — stop.
 
-> Full API: see [`../API.md`](../API.md).
+> Full API: see [`../docs/API.md`](../docs/API.md).
 
 ### Simple / native
 - `GET  /health` — liveness + MQTT status + data freshness.

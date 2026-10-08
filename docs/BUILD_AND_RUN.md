@@ -7,7 +7,7 @@
 > (3) watching/sending MQTT, (4) serial-console debugging, (5) the gotchas we hit.
 >
 > **HTTP server** that consumes this telemetry (FastAPI, with a SOVD-flavored
-> surface for future OpenSOVD): see [`telemetry-server/README.md`](telemetry-server/README.md).
+> surface for future OpenSOVD): see [`telemetry-server/README.md`](../telemetry-server/README.md).
 
 ---
 

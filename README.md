@@ -30,17 +30,17 @@ MXChip AZ3166.
 
 Project-specific docs:
 
-- [DEMO.md](DEMO.md) — step-by-step demo runbook (broker → server → dashboard → board command).
-- [LIMITATIONS.md](LIMITATIONS.md) — known gaps & future work (robustness, security, openDuT, test scope).
-- [ARCHITECTURE.md](ARCHITECTURE.md) — end-to-end overview: AZ3166 → broker → server → forwarding sink, and the Eclipse components used.
-- [API.md](API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
-- [MQTT-TOPICS.md](MQTT-TOPICS.md) — the MQTT topics the board and servers use (payloads, QoS, direction, client IDs).
-- [RUNNING-THE-SERVER.md](RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
-- [TESTING-LOG-FORWARDING.md](TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
-- [TESTING.md](TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
-- [OPENDUT-INTEGRATION.md](OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT (two WSL machines) to make cross-machine forwarding network-agnostic.
-- [UPROTOCOL-GATEWAY.md](UPROTOCOL-GATEWAY.md) — design note: a server-side Eclipse uProtocol gateway that adapts the board's raw MQTT into the uProtocol namespace (stretch / post-hackathon).
-- [BUILD_AND_RUN.md](BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
+- [DEMO.md](docs/DEMO.md) — step-by-step demo runbook (broker → server → dashboard → board command).
+- [LIMITATIONS.md](docs/LIMITATIONS.md) — known gaps & future work (robustness, security, openDuT, test scope).
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — end-to-end overview: AZ3166 → broker → server → forwarding sink, and the Eclipse components used.
+- [API.md](docs/API.md) — shareable HTTP API reference (telemetry/logs SSE, history, forwarding, SOVD reads).
+- [MQTT-TOPICS.md](docs/MQTT-TOPICS.md) — the MQTT topics the board and servers use (payloads, QoS, direction, client IDs).
+- [RUNNING-THE-SERVER.md](docs/RUNNING-THE-SERVER.md) — start the Python or Java server (native + Docker) and enable log forwarding.
+- [TESTING-LOG-FORWARDING.md](docs/TESTING-LOG-FORWARDING.md) — local + over-WiFi forwarding tests, with network pre-flight checks.
+- [TESTING.md](docs/TESTING.md) — unit/module tests for the Python server, Java server, and firmware pure logic.
+- [OPENDUT-INTEGRATION.md](docs/OPENDUT-INTEGRATION.md) — plan to use Eclipse openDuT (two WSL machines) to make cross-machine forwarding network-agnostic.
+- [UPROTOCOL-GATEWAY.md](docs/UPROTOCOL-GATEWAY.md) — design note: a server-side Eclipse uProtocol gateway that adapts the board's raw MQTT into the uProtocol namespace (stretch / post-hackathon).
+- [BUILD_AND_RUN.md](docs/BUILD_AND_RUN.md) — firmware build/flash and Docker broker notes.
 - `scripts/build-all.sh` — build all three components (firmware + Java + Python) from one place; `scripts/run-tests.sh` runs all test suites.
 - `scripts/forwarding-demo/` — one-command tmux demos (`start.sh` local, `start-remote.sh` remote).
 
@@ -58,7 +58,8 @@ added later as subdirectories. In short:
 | `build/` | Firmware build output (generated; gitignored). |
 | `telemetry-server/` | **Python/FastAPI** telemetry+log server (self-contained subproject). |
 | `telemetry-server-java/` | **Java/Jakarta** telemetry+log server (self-contained subproject). |
-| `*.md` | Project docs (see the index above). |
+| `docs/` | Project documentation (see the index above). |
+| `README.md` | This file — overview + the docs index. |
 
 So: **firmware = root (`app` + `lib` + `deps` + `cmake` + `scripts`)**; **servers
 = `telemetry-server/` and `telemetry-server-java/`**. A future refactor could move
@@ -219,7 +220,7 @@ Make sure to select an appropriate value for `WIFI_MODE` as well.
 > WIFI_SSID='MyNet' WIFI_PASSWORD='secret' BROKER_IP=192.168.1.50 \
 >   ./scripts/build.sh mqtt clean
 > ```
-> See "Build-time overrides" in [BUILD_AND_RUN.md](BUILD_AND_RUN.md) for details
+> See "Build-time overrides" in [BUILD_AND_RUN.md](docs/BUILD_AND_RUN.md) for details
 > (`WIFI_SSID`, `WIFI_PASSWORD`, `BROKER_IP`, `MQTT_CLIENT_NAME`; `clean` required).
 
 If the WiFi is properly congiured, you will get the output below at application startup:
@@ -237,7 +238,7 @@ firmware:
 - Reads the on-board sensors (temperature, humidity, pressure, accelerometer,
   magnetometer) and publishes telemetry over MQTT to `TRAceON/sensor-data`.
 - Emits ISO 17978-3 (SOVD) structured log entries to `TRAceON/logs`
-  (see [ARCHITECTURE.md](ARCHITECTURE.md) and `app/common/logger.h`).
+  (see [ARCHITECTURE.md](docs/ARCHITECTURE.md) and `app/common/logger.h`).
 - Subscribes to `TRAceON/incoming` for commands, shown on the OLED.
 
 The firmware source lives in `app/mqtt` and `app/common`. (The upstream sample's
